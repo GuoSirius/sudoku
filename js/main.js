@@ -157,11 +157,14 @@ function onCellClick(i) {
   game.selected = i;
   renderGame();
 }
-// 点击某格内的笔记小数字：直接把该候选升级为正式值（无论当前是否为笔记模式）
+// 点击某格内的笔记小数字：
+//  - 笔记模式下 -> 取消(删除)该候选
+//  - 普通模式下 -> 把该候选直接升级为正式值（笔记转正）
 function onNoteClick(i, n) {
   if (!game || game.status !== 'playing' || game.isGiven(i) || game.cells[i] !== 0) return;
   game.selected = i;
-  if (game.setCell(i, n, false)) afterMove();
+  const ok = noteMode ? game.setCell(i, n, true) : game.setCell(i, n, false);
+  if (ok) afterMove();
 }
 function inputNumber(n) {
   if (!game || game.selected == null) {

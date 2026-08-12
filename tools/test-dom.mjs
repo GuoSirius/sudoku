@@ -169,18 +169,33 @@ g = cur();
 const e0 = g.puzzle.findIndex((v) => v === 0);
 elements['board'].children[e0].click();
 elements['btn-notes'].click(); // 开启笔记
-elements['pad-numbers'].children[3].click(); // 记 4
+elements['pad-numbers'].children[3].click(); // 记 4（笔记模式）
 assert(cur().notes[e0].includes(4), '笔记模式写入候选数');
 
-// 笔记转正式数字：点击笔记小数字应直接填入并清空该格笔记
-const noteEl = elements['board'].children[e0].children.find((c) => c._classes.has('notes'));
-const span4 = noteEl && noteEl.children.find((s) => s.textContent === '4');
-assert(!!span4, '笔记格渲染出可点击的候选数字');
-if (span4) span4.click();
+const findNoteSpan = (cell, n) => {
+  const ne = cell.children.find((c) => c._classes.has('notes'));
+  return ne ? ne.children.find((s) => s.textContent === String(n)) : null;
+};
+
+// 笔记模式：点击已有候选 -> 取消(删除)该候选
+const s4 = findNoteSpan(elements['board'].children[e0], 4);
+assert(!!s4, '笔记格渲染出可点击的候选数字');
+s4.click();
+assert(!cur().notes[e0].includes(4), '笔记模式下点击笔记数字 -> 取消(删除)该候选');
+
+// 普通模式：点击候选 -> 升级为正式值（笔记转正）
+elements['btn-notes'].click(); // 关笔记模式
+elements['board'].children[e0].click(); // 选中
+elements['btn-notes'].click(); // 开笔记模式
+elements['pad-numbers'].children[6].click(); // 记 7
+elements['btn-notes'].click(); // 关笔记模式 -> 普通模式
+const s7 = findNoteSpan(elements['board'].children[e0], 7);
+assert(!!s7, '普通模式下仍渲染候选数字 7');
+s7.click();
 const afterNote = cur();
 assert(
-  afterNote.cells[e0] === 4 && afterNote.notes[e0].length === 0,
-  '点击笔记数字直接升级为正式值并清空该格笔记'
+  afterNote.cells[e0] === 7 && afterNote.notes[e0].length === 0,
+  '普通模式点击笔记数字 -> 升级为正式值并清空该格笔记'
 );
 
 // 暂存续玩
