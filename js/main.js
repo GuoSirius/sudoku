@@ -348,8 +348,8 @@ function archiveCurrent() {
   const cur = storage.getCurrent();
   if (!cur || cur.status === 'won') return;
   const g = Game.fromJSON(cur);
-  storage.addHistory({
-    id: g.id,
+  storage.upsertHistory({
+    id: g.resumeId || g.id, // 续玩局归档时更新原记录，而非新增一条
     difficulty: g.difficulty,
     durationMs: g.currentElapsed(),
     mistakes: g.mistakes,
@@ -483,7 +483,7 @@ function onWin() {
   stopTimerLoop();
   const duration = game.currentElapsed();
   const rec = {
-    id: game.id,
+    id: game.resumeId || game.id, // 续玩局：沿用原记录 id，原地更新
     difficulty: game.difficulty,
     durationMs: duration,
     mistakes: game.mistakes,
@@ -494,9 +494,9 @@ function onWin() {
     solution: game.solution,
     moves: game.moves,
   };
-  storage.addHistory(rec);
+  storage.upsertHistory(rec);
   storage.addLeaderboard({
-    id: game.id,
+    id: game.resumeId || game.id,
     difficulty: game.difficulty,
     durationMs: duration,
     mistakes: game.mistakes,
@@ -560,6 +560,7 @@ function resumeFromHistory(rec) {
 
   game = Game.fromJSON({
     id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
+    resumeId: rec.id, // 标记续玩自哪条记录，完成后原地更新它
     puzzle: rec.puzzle.slice(),
     solution: rec.solution.slice(),
     cells,

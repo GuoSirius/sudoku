@@ -6,6 +6,7 @@ import { makePuzzle, findConflicts } from './sudoku.js';
 export class Game {
   constructor(data) {
     this.id = data.id;
+    this.resumeId = data.resumeId || null; // 续玩自某条历史记录时，记录其原 id（用于完成后原地更新，避免重复）
     this.puzzle = data.puzzle; // 81，0 表示空格（题目给定）
     this.solution = data.solution; // 81，完整解（用于校验/错误/复盘）
     this.cells = data.cells; // 81，当前盘面
@@ -49,6 +50,7 @@ export class Game {
   toJSON() {
     return {
       id: this.id,
+      resumeId: this.resumeId,
       puzzle: this.puzzle,
       solution: this.solution,
       cells: this.cells,

@@ -247,6 +247,29 @@ const unfinRowT2 = [...elements['history-list'].children].find((r) => findByText
 findByText(unfinRowT2, '复盘').click();
 assert(!elements['screen-replay'].classList.contains('hidden'), '未完成记录点「复盘」进入复盘页');
 elements['btn-replay-back'].click();
+
+// 回归：续玩未完成记录并完成 -> 应原地更新原记录，不新增重复记录
+const unfinBefore = hist().find((r) => r.id === 'unfin-1');
+assert(unfinBefore && unfinBefore.won === false, '续玩前原记录 unfin-1 为未完成');
+elements['btn-resume'].click(); // 回到游戏（当前仍是这局续玩）
+let rg = cur();
+for (let i = 0; i < 81; i++) {
+  if (rg.cells[i] !== 0) continue;
+  elements['board'].children[i].click();
+  const n = rg.solution[i];
+  elements['pad-numbers'].children[n - 1].click(); // 普通模式单击即填入
+  if (cur() === null) break; // 已通关，避免重复点击再次触发 onWin
+  elements['pad-numbers'].children[n - 1].click(); // 兜底（笔记模式双击）
+}
+const afterHist = hist();
+assert(afterHist.length === 2, '续玩完成后历史仍只有 2 条（无重复新增）');
+const updatedRec = afterHist.find((r) => r.id === 'unfin-1');
+assert(updatedRec && updatedRec.won === true, '原记录 unfin-1 被原地更新为已完成');
+assert(afterHist.find((r) => r.id === 'seed-won'), '另一条已完成记录不受影响');
+assert(cur() === null, '通关后当前局已清空');
+const backHome = findByText(elements['modal-root'], '返回首页');
+if (backHome) backHome.click();
+
 // 清理：本测试把历史恢复成了当前对局，移除它以免污染后续「新游戏」流程
 localStorage.removeItem('sudoku:current');
 

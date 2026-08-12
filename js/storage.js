@@ -58,6 +58,17 @@ export const storage = {
     h.unshift(rec);
     write(KEYS.history, h.slice(0, 200));
   },
+  // 按 id 更新已有记录，不存在则置顶新增；用于「续玩后完成」原地更新原记录，避免重复
+  upsertHistory(rec) {
+    const h = read(KEYS.history, []);
+    const idx = h.findIndex((r) => r.id === rec.id);
+    if (idx >= 0) {
+      h[idx] = rec; // 原地更新（保留原位置）
+    } else {
+      h.unshift(rec);
+    }
+    write(KEYS.history, h.slice(0, 200));
+  },
 
   // 排行榜：所有完成对局的成绩
   getLeaderboard() {
