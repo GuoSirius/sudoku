@@ -1,0 +1,11 @@
+{
+  "name": "sudoku",
+  "version": "1.0.0",
+  "private": true,
+  "description": "可安装的网页数独：计时、个人排行榜、历史复盘、中途暂存续玩。纯静态 PWA。",
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "test": "node tools/test-engine.mjs && node tools/test-game.mjs",
+    "deploy": "npx wrangler pages deploy . --project-name=sudoku"
+  }
+}
