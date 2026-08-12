@@ -59,8 +59,8 @@ class El {
   get onclick() {
     return this._onclick;
   }
-  click() {
-    const ev = { stopPropagation() {} };
+  click(extra = {}) {
+    const ev = { stopPropagation() {}, ...extra };
     (this._listeners['click'] || []).forEach((f) => f(ev));
     if (this._onclick) this._onclick(ev);
   }
@@ -327,8 +327,8 @@ const wval = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((n) => n !== cur().solution[we]);
 await tick(); // 清掉前面交互留下的 lastNote/lastPad
 elements['board'].children[we].click(); // 选中空格
 const wpb = elements['pad-numbers'].children[wval - 1];
-wpb.click(); // 单击=记候选
-elements['pad-numbers'].children[wval - 1].click(); // 双击=填入（确定错误的值，时间窗内第二次单击）
+wpb.click(); // 普通模式单击=回填（填入确定错误的值）
+elements['pad-numbers'].children[wval - 1].click(); // 双击窗口内再次点击=回填（幂等）
 assert(!elements['board'].children[we]._classes.has('wrong'), '仅冲突模式下填错不标红（不泄题）');
 assert(cur().mistakes === 0, '仅冲突模式下填错不自动计错');
 elements['btn-check'].click(); // 手动「检查」
@@ -339,22 +339,39 @@ assert(
   `「检查」后错误数等于当前错误格数（${wrongCount}）`
 );
 
-// 数字盘交互：单击记候选 / 双击填入
+// ===== 数字盘交互模型（PC：笔记模式 || 按住 Ctrl = 记候选；否则回填；双击强制回填）=====
 await tick(); // 清掉前面交互留下的 lastNote/lastPad
-const ne = cur().cells.findIndex((v) => v === 0);
-elements['board'].children[ne].click(); // 选中空格
-const nBefore = cur().cells[ne];
-elements['pad-numbers'].children[2].click(); // 单击 3 = 记候选
-assert(cur().cells[ne] === nBefore && cur().notes[ne].includes(3), '单击数字盘=记候选（不填入）');
-const pb3 = elements['pad-numbers'].children[2];
-elements['pad-numbers'].children[2].click(); // 双击 3 = 填入（撤销单击的候选并写入正式值，时间窗内第二次单击）
-assert(cur().cells[ne] === 3 && cur().notes[ne].length === 0, '双击数字盘=填入并清空该格候选');
-// PC 组合键：Ctrl+数字键 = 记候选（笔记模式），不填入
-const ce = cur().cells.findIndex((v) => v === 0);
-elements['board'].children[ce].click();
+
+// 1) 普通模式（未开笔记、未按 Ctrl）：单击数字盘 = 回填
+const nm = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[nm].click(); // 选中空格
+if (elements['btn-notes'].classList.contains('active')) elements['btn-notes'].click(); // 确保普通模式
+elements['pad-numbers'].children[1].click(); // 普通模式单击 2 = 回填
+assert(cur().cells[nm] === 2 && cur().notes[nm].length === 0, '普通模式单击数字盘=回填（非候选）');
+
+// 2) 笔记模式：单击数字盘 = 记候选（有则删、无则加）；双击 = 强制回填
+elements['btn-notes'].click(); // 开笔记
+const bm = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[bm].click();
+elements['pad-numbers'].children[3].click(); // 单击 4 = 记候选
+assert(cur().notes[bm].includes(4) && cur().cells[bm] === 0, '笔记模式单击数字盘=记候选');
+elements['pad-numbers'].children[3].click(); // 双击第二步（窗口内同数字）= 强制回填
+assert(cur().cells[bm] === 4 && cur().notes[bm].length === 0, '笔记模式下双击数字盘=回填');
+
+// 3) 普通模式 + 按住 Ctrl（鼠标 click 带 ctrlKey）：记候选（不回填）
+await tick();
+elements['btn-notes'].click(); // 关笔记 -> 普通模式
+const cm = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[cm].click();
+elements['pad-numbers'].children[6].click({ ctrlKey: true }); // Ctrl+单击 7
+assert(cur().notes[cm].includes(7) && cur().cells[cm] === 0, '普通模式 Ctrl+单击数字盘=记候选（不回填）');
+
+// 4) 键盘 Ctrl+数字键 = 记候选（不回填），供后续单元格候选用例使用
+const ke = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[ke].click();
 dispatchKey('8', { ctrl: true }); // 按住 Ctrl + 8
-assert(cur().notes[ce].includes(8), 'Ctrl+数字键=记候选（笔记模式）');
-assert(cur().cells[ce] === 0, 'Ctrl+数字键不填入正式值');
+assert(cur().notes[ke].includes(8) && cur().cells[ke] === 0, 'Ctrl+数字键=记候选（不回填）');
+elements['btn-notes'].click(); // 重新开笔记，供后续「单元格候选」用例（需 pad 单击记候选）
 
 // 单元格候选：单击切换、双击填入（与数字盘逻辑一致）
 const ci = (() => {

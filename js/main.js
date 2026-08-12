@@ -220,7 +220,7 @@ function renderPad() {
     const b = document.createElement('button');
     b.className = 'num' + (rem[n] === 0 ? ' done' : '');
     b.innerHTML = `${n}<span class="remain">${rem[n]}</span>`;
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
       if (!game || game.selected == null) {
         toast('请先选择一个格子');
         return;
@@ -234,8 +234,9 @@ function renderPad() {
         return;
       }
       setLastPad(n);
-      // 单击 = 切换候选（添加/取消），无论是否处于笔记模式
-      if (game.setCell(game.selected, n, true)) afterMove();
+      // 单击：wantNote = 笔记模式 || 按住 Ctrl -> 记候选(切换：有删无加)；否则回填
+      const wantNote = noteMode || (e && e.ctrlKey) || ctrlHeld;
+      if (game.setCell(game.selected, n, wantNote)) afterMove();
     });
     wrap.appendChild(b);
   }
