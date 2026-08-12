@@ -112,6 +112,12 @@ let pass = 0;
 let fail = 0;
 const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
 
+// 模拟向 document 派发 keydown（复用 main.js 注册的监听器）
+function dispatchKey(key) {
+  const ev = { key, preventDefault() {} };
+  (docListeners['keydown'] || []).forEach((f) => f(ev));
+}
+
 // 加载应用（init 会自执行）
 await import('../js/main.js');
 assert(true, 'init 无异常');
@@ -203,6 +209,15 @@ elements['btn-save-exit'].click();
 assert(cur() && cur().status === 'paused', '保存并退出后状态为 paused');
 elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
+
+// 键盘输入：未选中格时按数字键应自动选中首个空格并填入（PC 友好）
+// 当前续玩局里 e0 已通过「笔记转正」填为 7；selected 不持久化，故续玩后为 null
+assert(cur().cells[e0] === 7, '续玩局 e0 仍为笔记转正后的值 7');
+const fe = cur().cells.findIndex((v) => v === 0); // 首个空格（e0 已填 7）
+dispatchKey('3'); // 自动选中首个空格并填 3
+assert(cur().cells[fe] === 3, '键盘数字键自动选中首个空格并填入 3');
+dispatchKey('Backspace'); // 擦除该格
+assert(cur().cells[fe] === 0, '键盘 Backspace 擦除该格');
 
 // 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
 const htmlEl = document.documentElement;
