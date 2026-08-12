@@ -19,14 +19,16 @@ let toastTimer = null;
 const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label || id;
 
 // ---------------- 主题 ----------------
+// 主题类挂在 <html>（documentElement）上：CSS 变量从根向下覆盖整个文档，
+// 这样 body 整页背景（祖先元素）也能拿到 --bg/--text，避免深色模式外层仍白底。
 function applyTheme(theme) {
-  const app = $('app');
-  app.classList.remove('theme-light', 'theme-dark');
+  const root = document.documentElement;
+  root.classList.remove('theme-light', 'theme-dark');
   if (theme === 'auto') {
     const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    app.classList.add(dark ? 'theme-dark' : 'theme-light');
+    root.classList.add(dark ? 'theme-dark' : 'theme-light');
   } else {
-    app.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+    root.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
   }
 }
 

@@ -80,6 +80,7 @@ function findAll(root, cls, out = []) {
 const elements = {};
 const docListeners = {};
 globalThis.document = {
+  documentElement: new El('html'),
   getElementById(id) {
     return elements[id] || (elements[id] = new El('div'));
   },
@@ -164,6 +165,19 @@ elements['btn-save-exit'].click();
 assert(cur() && cur().status === 'paused', '保存并退出后状态为 paused');
 elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
+
+// 主题切换：主题类应挂在 <html>（根元素）上，整页背景随之变化
+const htmlEl = document.documentElement;
+assert(
+  htmlEl.classList.contains('theme-light') || htmlEl.classList.contains('theme-dark'),
+  'init 后 <html> 已带主题类'
+);
+elements['btn-theme'].click(); // auto -> light
+elements['btn-theme'].click(); // light -> dark
+assert(
+  htmlEl.classList.contains('theme-dark') && !htmlEl.classList.contains('theme-light'),
+  '切到深色后 <html> 为 theme-dark（背景随之变暗）'
+);
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

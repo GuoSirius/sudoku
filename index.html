@@ -6,13 +6,34 @@
     <meta name="theme-color" content="#4f46e5" />
     <meta name="description" content="一个可安装的网页数独游戏：计时、个人排行榜、历史复盘、中途暂存续玩。纯前端，离线可用。" />
     <title>数独 Sudoku</title>
+    <script>
+      // 预渲染主题：在 CSS 应用前把主题类挂到 <html>，避免刷新/首屏白屏闪烁
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem('sudoku:settings') || '{}');
+          var theme = s.theme || 'auto';
+          var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var cls =
+            theme === 'dark'
+              ? 'theme-dark'
+              : theme === 'light'
+              ? 'theme-light'
+              : dark
+              ? 'theme-dark'
+              : 'theme-light';
+          document.documentElement.className = cls;
+        } catch (e) {
+          document.documentElement.className = 'theme-light';
+        }
+      })();
+    </script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <div id="app" class="theme-auto">
+    <div id="app">
       <header class="appbar">
         <button class="icon-btn" id="btn-home" title="返回首页" aria-label="返回首页">☰</button>
         <h1 class="appbar-title">数独</h1>
