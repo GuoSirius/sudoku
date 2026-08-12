@@ -2,23 +2,64 @@
 
 > 本文面向**第一次使用 Supabase** 的你。照着步骤一步步在网页上点即可，不需要写后端代码。
 >
-> **目标**：让你在 Supabase 上准备好「数据库 + GitHub 登录」，然后把 **Project URL** 和 **anon key** 发给我。我拿到后再写代码，把本地记录同步到云端，实现跨设备查看历史 / 复盘 / 排行榜。
+> **目标**：让你在 Supabase 上准备好「数据库 + 登录方式」，然后把 **Project URL** 和 **anon key** 发给我。我拿到后再写代码，把本地记录同步到云端，实现跨设备查看历史 / 复盘 / 排行榜。
+>
+> **登录方式建议**：**邮箱（魔法链接）为主 + GitHub 可选**。两者都能做、可同时开启；邮箱覆盖所有用户且几乎零配置，GitHub 作为可选加分项（详见下方「认证方式对比」一节）。
 >
 > **本文只是操作指南，不是代码。** 真正的同步代码等你给我配置后再写，且全部在 `feature/supabase-sync` 分支上进行，不影响你现在能正常玩的主线（`main` / `v1.0.0`）。
 
 ---
 
+## 认证方式：邮箱 vs GitHub 有什么区别？（先读这段）
+
+你之前选了 GitHub，但当时不太确定两者差异。下面说清楚，方便你定方案。结论：**推荐邮箱为主、GitHub 可选**，两者都能做、且可同时开启。
+
+### 对「部署」的影响
+
+| | 邮箱登录（魔法链接） | GitHub 登录 |
+| --- | --- | --- |
+| 额外配置 | **几乎为零**：Supabase 默认就开启邮箱认证，无需申请任何第三方 App | 需在 GitHub 建一个 **OAuth App**，拿到 Client ID / Secret 填回 Supabase |
+| 与域名耦合 | 低：只需在 Supabase 填你的站点地址 | 高：OAuth App 的回调地址必须和你**部署的域名**一致；以后换域名要同步改 GitHub + Supabase 两处 |
+| 邮件送达 | 免费层用 Supabase 自带发信，**链接可能进垃圾邮件**；要稳定可配自定义 SMTP（如 Resend，免费额度够个人用） | 不涉及邮件，无此问题 |
+
+### 对「用户使用」的影响
+
+| | 邮箱登录 | GitHub 登录 |
+| --- | --- | --- |
+| 谁能用 | **任何人**（只要有邮箱） | 必须有 **GitHub 账号**（数独用户多为普通玩家，很多人没有） |
+| 登录步骤 | 输入邮箱 → 收邮件 → 点链接 → 登录（免记密码） | 点「用 GitHub 登录」→ 授权 → 登录（一步，但需有 GitHub 账号） |
+| 移动端 | 邮件链接在手机上点开即可回到站点（PWA 友好） | 同样走网页授权，没问题 |
+| 适合人群 | 最广，适合面向公众的游戏 | 偏开发者；作为「可选」补充很合适 |
+
+### 可行性：能不能两个都做？
+
+**能，而且很简单。** Supabase Auth 原生支持**同时开启多个登录方式**，登录界面并列显示多个按钮即可：
+
+- 每个登录方式对应一个独立账号（用邮箱登、用 GitHub 登是**两个不同的账户**，不会自动合并——这是正常的，各登各的）；
+- 云端数据按 `auth.uid()`（用户唯一 ID）隔离，哪种方式登录都能正常存 / 取自己的数据；
+- 代码上：邮箱是默认主入口；GitHub 作为「可选」按钮，**只有当你配了 GitHub 且打开开关时才显示**，没配就自动隐藏，不影响邮箱登录。
+
+### 推荐方案
+
+> **邮箱（魔法链接）为主 + GitHub 可选。**
+> - **邮箱**：覆盖所有用户、部署最简单，作为默认登录方式；
+> - **GitHub**：你若想顺手用（毕竟你有 GitHub 账号），就顺便开启作为可选入口，普通玩家不用管它。
+>
+> 这样你给我的东西也更少：**邮箱开箱即用，你只需提供 Project URL + anon key**；GitHub 是可选的加分项。
+
+---
+
 ## 0. 总体要你做的事（先有个印象）
 
-你只需要在网页上点 5 步，**全程不用写代码**：
+你只需要在网页上点几步，**全程不用写代码**：
 
 1. 建一个 Supabase 项目
 2. 复制 **Project URL** + **anon key**（这两个发给我）
 3. 执行一段 SQL 建数据表（现成的，复制粘贴）
-4. 在 GitHub 建一个 OAuth App，并在 Supabase 启用 GitHub 登录
+4. （可选）在 GitHub 建一个 OAuth App，并在 Supabase 启用 GitHub 登录 —— **不加也行，邮箱登录默认就有**
 5. 把拿到的信息发给我
 
-你**不需要**把 GitHub 的 Secret 发给我——那个只填在 Supabase 后台，前端代码用不到。
+> 邮箱登录 Supabase 默认已开启，**你什么都不用配**；GitHub 是可选的加分项。你**不需要**把 GitHub 的 Secret 发给我——那个只填在 Supabase 后台，前端代码用不到。
 
 ---
 
@@ -84,9 +125,11 @@ create policy "user_data_own_row" on public.user_data
 
 ---
 
-## 4. 配置 GitHub 登录（重点，分两段）
+## 4. （可选）配置 GitHub 登录
 
-我们用 **GitHub 登录**（你之前已选定）。需要两边各配一次：GitHub 侧出「钥匙」，Supabase 侧接「锁」。
+> **邮箱登录默认已开启，无需任何配置**，可直接跳到下一步。下面 GitHub 是**可选的**：你想用 GitHub 一键登录就做，不想做也不影响邮箱登录。
+
+我们用 **GitHub 登录**作为可选入口。需要两边各配一次：GitHub 侧出「钥匙」，Supabase 侧接「锁」。
 
 ### 4.1 在 GitHub 创建 OAuth App
 
@@ -133,15 +176,17 @@ create policy "user_data_own_row" on public.user_data
 
 - ✅ Supabase **Project URL**
 - ✅ Supabase **anon key**
-- ✅ 确认：GitHub OAuth App 已创建、Supabase 已启用 GitHub provider、回调/跳转地址已配置
-- （GitHub Client Secret 不必发我）
+- ✅ 是否启用 GitHub 登录？（**邮箱默认就有，GitHub 是可选**）
+  - 若启用：确认 GitHub OAuth App 已创建、Supabase 已启用 GitHub provider、回调 / 跳转地址已配置（**GitHub Client Secret 不必发我**，只填 Supabase 后台）
+  - 若不启用：跳过即可，邮箱登录照常工作
 
 收到后我会：
 
 1. 在 `feature/supabase-sync` 分支写代码（**不影响你现在能玩的主线**）；
 2. 在 `js/config.js` 填入你的 URL + anon key；
-3. 新增登录 / 登出 UI 和云端同步逻辑（登录拉取、本地变动防抖回写、离线照常玩）；
-4. 跑通原有测试后，交你在浏览器里实测跨设备。
+3. 默认以**邮箱魔法链接**为主登录方式；若你启用 GitHub，登录页同时显示 GitHub 按钮（未启用则自动隐藏）；
+4. 新增登录 / 登出 UI 和云端同步逻辑（登录拉取、本地变动防抖回写、离线照常玩）；
+5. 跑通原有测试后，交你在浏览器里实测跨设备。
 
 ---
 
@@ -168,7 +213,7 @@ create policy "user_data_own_row" on public.user_data
 - [ ] Supabase 项目已创建（Free 层即可）
 - [ ] 已复制 **Project URL** 和 **anon key**
 - [ ] SQL Editor 执行了建表语句，显示 `Success`
-- [ ] GitHub OAuth App 已创建，拿到 Client ID / Secret
-- [ ] Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
-- [ ] Supabase → URL Configuration 的 Site URL / Redirect URLs 已加 `http://localhost:5173`
-- [ ] 已把 Project URL + anon key 发给我，并说「开始」
+- [ ] （可选）GitHub OAuth App 已创建，拿到 Client ID / Secret
+- [ ] （可选）Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
+- [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加 `http://localhost:5173`
+- [ ] 已把 Project URL + anon key 发给我，并说「开始」（注明是否启用 GitHub）
