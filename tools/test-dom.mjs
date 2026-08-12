@@ -210,14 +210,16 @@ assert(cur() && cur().status === 'paused', '保存并退出后状态为 paused')
 elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
 
-// 键盘输入：未选中格时按数字键应自动选中首个空格并填入（PC 友好）
+// 键盘输入：未选中格时按数字键应给出提示且不填入（避免误填）
 // 当前续玩局里 e0 已通过「笔记转正」填为 7；selected 不持久化，故续玩后为 null
 assert(cur().cells[e0] === 7, '续玩局 e0 仍为笔记转正后的值 7');
 const fe = cur().cells.findIndex((v) => v === 0); // 首个空格（e0 已填 7）
-dispatchKey('3'); // 自动选中首个空格并填 3
-assert(cur().cells[fe] === 3, '键盘数字键自动选中首个空格并填入 3');
-dispatchKey('Backspace'); // 擦除该格
-assert(cur().cells[fe] === 0, '键盘 Backspace 擦除该格');
+const before = cur().cells[fe];
+dispatchKey('3'); // 未选格 -> 仅提示，不填入
+assert(cur().cells[fe] === before, '未选中格按数字键不填入（避免误填）');
+assert(elements['toast'].textContent === '请先选择一个格子', '未选中格按数字键给出提示');
+dispatchKey('Backspace'); // 同样不擦除
+assert(cur().cells[fe] === before, '未选中格按 Backspace 不擦除');
 
 // 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
 const htmlEl = document.documentElement;

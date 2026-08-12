@@ -167,12 +167,9 @@ function onNoteClick(i, n) {
   if (ok) afterMove();
 }
 function inputNumber(n) {
-  if (!game) return;
-  // 未选中格子时，自动选中第一个空格，保证键盘输入始终有响应（PC 友好）
-  if (game.selected == null) {
-    const fi = game.cells.findIndex((v) => v === 0);
-    if (fi < 0) return;
-    game.selected = fi;
+  if (!game || game.selected == null) {
+    toast('请先选择一个格子');
+    return;
   }
   if (game.setCell(game.selected, n, noteMode)) afterMove();
 }
