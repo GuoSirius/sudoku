@@ -690,7 +690,6 @@ function init() {
   $('btn-hint').onclick = useHint;
   $('btn-restart').onclick = restartGame;
   $('btn-new2').onclick = newGameFlow;
-  $('btn-save-exit').onclick = saveExit;
 
   $('btn-clear-history').onclick = () => confirmClear('history');
   $('btn-replay-back').onclick = () => {

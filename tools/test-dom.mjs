@@ -215,7 +215,7 @@ assert(
 );
 
 // 暂存续玩
-elements['btn-save-exit'].click();
+elements['btn-exit-pause'].click();
 assert(cur() && cur().status === 'paused', '保存并退出后状态为 paused');
 elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
