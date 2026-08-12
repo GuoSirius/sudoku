@@ -1,15 +1,64 @@
-# 系统文件
+# ============ 系统 / OS ============
 .DS_Store
 Thumbs.db
-desktop.ini
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# 编辑器
+# ============ 编辑器 / IDE ============
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
 
-# 依赖（本项目为零构建静态站点，无需 node_modules）
+# ============ 依赖（零构建静态站点，无需 node_modules） ============
 node_modules/
+.pnp/
+.pnp.js
 
-# 本地临时
+# ============ 构建 / 输出目录（本项目无需构建，仅作兜底） ============
+dist/
+build/
+.output/
+out/
+site/
+
+# ============ 部署相关缓存 ============
+# wrangler 本地缓存
+.wrangler/
+# wrangler 本地环境变量（勿提交）
+.dev.vars
+*.tfstate
+*.tfstate.backup
+
+# ============ 环境变量 / 密钥（切勿提交） ============
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.crt
+
+# ============ Python（图标生成脚本运行产物） ============
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ============ 日志 ============
 *.log
+*.logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============ 测试 / 覆盖率产物 ============
+coverage/
+.nyc_output/
+
+# ============ 账号 / 工程辅助目录 ============
+.claude/
+.workbuddy/

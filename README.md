@@ -13,7 +13,22 @@
 - 💾 **暂存续玩**：关闭或刷新后可「继续游戏」；支持「重开本局」「新游戏」
 - 🎚 **四档难度**：简单 / 中等 / 困难 / 专家（按提示数自动生成并保证唯一解）
 - 📱 **PWA**：可「添加到主屏幕」当作 App 安装，离线可用
-- 🌗 **明暗主题**：跟随系统 / 浅色 / 深色
+- 🌗 **明暗主题**：默认深色，可在设置中切换「跟随系统 / 浅色 / 深色」
+
+## 操作与快捷键
+
+| 操作 | 鼠标 / 触摸 | 键盘 |
+| --- | --- | --- |
+| 选中格子 | 点击格子 | 方向键移动选中 |
+| 填入数字 | 点数字盘 1–9 | 数字键 `1`–`9` |
+| 擦除 | 点「擦除」 | `Backspace` / `Delete` / `0` |
+| 笔记模式 | 点「笔记」切换 | 按 `N` 切换 |
+| 提示（填正确值） | 点「提示」 | — |
+| 暂停 / 继续 | 顶栏 ⏸ / 暂停页「继续」 | — |
+
+- **笔记**：开启笔记后填入的是「候选数」（小字），同一格可记多个；再次点同一数字取消该候选。
+- **提示**会判定为「使用提示一次」，并计入复盘与排行榜的提示数。
+- 选中某格后，同行 / 同列 / 同宫与相同数字会高亮，冲突与错误标红。
 
 ## 技术说明
 
@@ -30,12 +45,28 @@ npm run dev          # 默认 http://localhost:8137
 
 # 方式二：Python
 python -m http.server 8137
-
-# 运行自检
-npm test
 ```
 
 打开浏览器访问对应地址即可游玩。**注意**：PWA 安装与 Service Worker 需要以 `http://` 或 `https://` 访问（`file://` 直接打开不可用）。
+
+### 脚本
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run dev` | 启动本地零依赖静态服务器（默认 8137 端口） |
+| `npm test` | 运行三套自检：引擎 / 对局逻辑 / DOM 交互（全绿即代表可用） |
+| `npm run deploy` | 用 wrangler 部署到 Cloudflare Pages（`npx wrangler pages deploy .`） |
+| `npm run gen:icons` | （可选）用 Python 重新生成 PWA 图标到 `icons/` |
+
+### 自检说明
+
+```bash
+npm test
+# 等价于依次运行：
+#   node tools/test-engine.mjs   # 生成 / 唯一解 / 冲突检测（24 项）
+#   node tools/test-game.mjs     # 对局状态机 / 胜利 / 笔记 / 复盘（11 项）
+#   node tools/test-dom.mjs      # 模拟 DOM 跑完整交互：通关/历史/复盘/续玩/主题（18 项）
+```
 
 ## 部署到 Cloudflare Pages
 
@@ -98,12 +129,27 @@ sudoku/
 │   └── pwa.js              # Service Worker 注册
 ├── manifest.webmanifest    # PWA 清单
 ├── sw.js                   # Service Worker（离线缓存）
-├── icons/                  # 应用图标（SVG + PNG）
+├── icons/                  # 应用图标（SVG + PNG，由 tools/gen_icons.py 生成）
 ├── tools/                  # 自检脚本与本地服务器
+│   ├── serve.mjs           # 零依赖静态服务器（npm run dev）
+│   ├── gen_icons.py        # 生成 PWA 图标
+│   ├── test-engine.mjs     # 引擎自检
+│   ├── test-game.mjs       # 对局逻辑自检
+│   └── test-dom.mjs        # DOM 交互冒烟测试
+├── package.json            # 脚本（dev/test/deploy/gen:icons）
 ├── wrangler.toml           # Cloudflare Pages 配置
-└── .github/workflows/      # 自动部署
+├── .github/workflows/      # 自动部署
+└── .gitignore
 ```
 
 ## 数据说明
 
 所有对局数据均保存在你当前浏览器中，不会上传到任何服务器。清除浏览器数据或换设备后记录不互通（这是「本地个人榜」的设计取舍，换来零后端、最简单稳定的部署）。
+
+- **清除数据**：设置页 → 「清除全部本地数据」可一键删除当前对局、历史与排行榜（设置保留），操作不可恢复。
+- 历史记录最多保留最近 200 局；排行榜展示各难度最佳成绩（前 10）。
+
+## 可扩展方向
+
+- **全球共享排行榜**：当前为本地个人榜。若需跨设备/跨玩家共享，可引入 Cloudflare D1 + Workers（同平台一体化，不增加额外服务商）。
+- 每日挑战、错题本、提示次数限制等可在现有状态机与存储上直接扩展。
