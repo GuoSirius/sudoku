@@ -36,8 +36,12 @@ function applyTheme(theme) {
 function showScreen(name) {
   SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
   if (name !== 'game') stopTimerLoop();
+  // 每个页面在切换/刷新恢复时都自己渲染数据，保证按钮进入与刷新恢复行为一致
   if (name === 'menu') renderMenu();
-  // 持久化当前页面，刷新后停留在同一页（复盘是历史的子页，记成 history）
+  else if (name === 'history') renderHistory();
+  else if (name === 'leaderboard') renderLeaderboard();
+  else if (name === 'settings') renderSettings();
+  // 复盘是历史的子页，由 openReplay 负责渲染；持久化时记成 history
   const persist = name === 'replay' ? 'history' : name;
   if (['menu', 'game', 'history', 'leaderboard', 'settings'].includes(persist)) {
     try {
@@ -714,18 +718,9 @@ function init() {
 
   $('btn-resume').onclick = resumeGame;
   $('btn-new').onclick = newGameFlow;
-  $('btn-history').onclick = () => {
-    renderHistory();
-    showScreen('history');
-  };
-  $('btn-leaderboard').onclick = () => {
-    renderLeaderboard();
-    showScreen('leaderboard');
-  };
-  $('btn-settings').onclick = () => {
-    renderSettings();
-    showScreen('settings');
-  };
+  $('btn-history').onclick = () => showScreen('history');
+  $('btn-leaderboard').onclick = () => showScreen('leaderboard');
+  $('btn-settings').onclick = () => showScreen('settings');
 
   $('btn-pause').onclick = togglePause;
   $('btn-resume-game').onclick = resumeGamePlay;

@@ -116,7 +116,21 @@ globalThis.window = {
   location: {},
 };
 
-// 预置：上次停留在「历史」页，用于验证刷新恢复
+// 预置：上次停留在「历史」页，并预置一条历史记录，用于验证刷新恢复时数据已渲染
+store['sudoku:history'] = JSON.stringify([
+  {
+    id: 'seed-1',
+    difficulty: 'easy',
+    durationMs: 123000,
+    mistakes: 2,
+    hintsUsed: 0,
+    won: true,
+    date: Date.now(),
+    puzzle: [],
+    solution: [],
+    moves: [],
+  },
+]);
 store['sudoku:screen'] = 'history';
 
 let pass = 0;
@@ -138,6 +152,10 @@ assert(
   !elements['screen-history'].classList.contains('hidden') &&
     elements['screen-menu'].classList.contains('hidden'),
   '刷新恢复：曾停留在历史页则恢复历史页（非首页）'
+);
+assert(
+  elements['history-list'].children.length >= 1,
+  '刷新恢复历史页时历史列表已渲染（含记录，非空白）'
 );
 
 // 默认应为暗黑主题
@@ -291,6 +309,10 @@ assert(
   localStorage.getItem('sudoku:screen') === 'leaderboard',
   '切到排行榜页面会持久化该页面'
 );
+assert(
+  elements['leaderboard-body'].children.length >= 1,
+  '进入排行榜时数据已渲染（非空）'
+);
 
 // 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
 const htmlEl = document.documentElement;
@@ -307,6 +329,12 @@ assert(
   htmlEl.classList.contains('theme-dark') && !htmlEl.classList.contains('theme-light'),
   '显式深色切换生效（背景随之变暗）'
 );
+
+// 设置页数据加载：进入设置应渲染难度与错误提示分段控件（验证刷新恢复时也能渲染）
+elements['btn-settings'].click();
+assert(elements['set-difficulty'].children.length === 4, '设置页渲染难度分段（4 档）');
+assert(elements['set-mistake'].children.length === 3, '设置页渲染错误提示分段（3 档）');
+elements['btn-settings-back'].click();
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);
