@@ -2,6 +2,7 @@
   "name": "sudoku",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "可安装的网页数独：计时、个人排行榜、历史复盘、中途暂存续玩。纯静态 PWA。",
   "scripts": {
     "dev": "node tools/serve.mjs",
