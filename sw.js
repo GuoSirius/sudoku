@@ -1,5 +1,7 @@
 // Service Worker：应用壳缓存，支持离线可用与秒开
-const CACHE = 'sudoku-v1';
+// 静态资源采用「网络优先、离线回退缓存」：在线时始终拉取最新文件，
+// 避免旧版 Service Worker 把过期的 main.js 一直喂给浏览器（导致新功能不生效）。
+const CACHE = 'sudoku-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -55,18 +57,14 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 静态资源：缓存优先，回源并更新
+  // 静态资源：网络优先，成功则写入缓存供离线使用；离线时回退缓存
   e.respondWith(
-    caches.match(req).then(
-      (cached) =>
-        cached ||
-        fetch(req)
-          .then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-            return res;
-          })
-          .catch(() => cached)
-    )
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });

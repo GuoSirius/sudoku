@@ -38,7 +38,9 @@
 - 纯静态站点，**原生 HTML + CSS + ES Module JavaScript，零框架、零构建**
 - 数独引擎：随机回溯生成完整解 → 逐步挖空并保证唯一解（回溯计数判定）
 - 存储：`localStorage`（设置 / 当前局 / 历史 / 排行榜）
-- PWA：`manifest.webmanifest` + `sw.js`（应用壳缓存，导航请求网络优先、静态资源缓存优先）
+- PWA：`manifest.webmanifest` + `sw.js`（应用壳缓存，离线可用；静态资源网络优先，保证在线时始终拉取最新代码）
+
+> **部署后更新**：Service Worker 会在后台静默更新。改版后若功能没生效，多半是浏览器还在跑旧缓存——**硬刷新一次**（Ctrl/Cmd+Shift+R，或 DevTools 里 Unregister Service Worker）即可加载最新版。
 
 ## 本地运行
 
