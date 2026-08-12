@@ -37,6 +37,36 @@ function showScreen(name) {
   SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
   if (name !== 'game') stopTimerLoop();
   if (name === 'menu') renderMenu();
+  // 持久化当前页面，刷新后停留在同一页（复盘是历史的子页，记成 history）
+  const persist = name === 'replay' ? 'history' : name;
+  if (['menu', 'game', 'history', 'leaderboard', 'settings'].includes(persist)) {
+    try {
+      localStorage.setItem('sudoku:screen', persist);
+    } catch (e) {}
+  }
+}
+
+// 刷新/重开时恢复到上次停留的页面（有进行中对局则一并恢复）
+function restoreScreen() {
+  renderMenu(); // 同步首页「继续」按钮与统计（即使当前不显示首页）
+  let saved = null;
+  try {
+    saved = localStorage.getItem('sudoku:screen');
+  } catch (e) {}
+  const cur = storage.getCurrent();
+  if (saved === 'game' && cur && cur.status !== 'won') {
+    game = Game.fromJSON(cur);
+    noteMode = false;
+    $('btn-notes').classList.remove('active');
+    if (game.status === 'paused') $('pause-overlay').classList.remove('hidden');
+    enterGame();
+    return;
+  }
+  if (saved === 'history' || saved === 'leaderboard' || saved === 'settings') {
+    showScreen(saved);
+    return;
+  }
+  showScreen('menu');
 }
 
 // ---------------- 弹窗 / Toast ----------------
@@ -704,7 +734,7 @@ function init() {
   });
 
   registerPWA();
-  showScreen('menu');
+  restoreScreen();
 }
 
 init();

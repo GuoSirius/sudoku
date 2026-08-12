@@ -108,6 +108,9 @@ globalThis.window = {
   location: {},
 };
 
+// 预置：上次停留在「历史」页，用于验证刷新恢复
+store['sudoku:screen'] = 'history';
+
 let pass = 0;
 let fail = 0;
 const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
@@ -121,6 +124,13 @@ function dispatchKey(key) {
 // 加载应用（init 会自执行）
 await import('../js/main.js');
 assert(true, 'init 无异常');
+
+// 刷新恢复：预置停留在历史页，应恢复历史页而非首页
+assert(
+  !elements['screen-history'].classList.contains('hidden') &&
+    elements['screen-menu'].classList.contains('hidden'),
+  '刷新恢复：曾停留在历史页则恢复历史页（非首页）'
+);
 
 // 默认应为暗黑主题
 assert(
@@ -220,6 +230,13 @@ assert(cur().cells[fe] === before, '未选中格按数字键不填入（避免�
 assert(elements['toast'].textContent === '请先选择一个格子', '未选中格按数字键给出提示');
 dispatchKey('Backspace'); // 同样不擦除
 assert(cur().cells[fe] === before, '未选中格按 Backspace 不擦除');
+
+// 切页持久化：进入排行榜应记录当前页（供刷新恢复）
+elements['btn-leaderboard'].click();
+assert(
+  localStorage.getItem('sudoku:screen') === 'leaderboard',
+  '切到排行榜页面会持久化该页面'
+);
 
 // 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
 const htmlEl = document.documentElement;
