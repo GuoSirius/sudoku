@@ -458,7 +458,7 @@ function showWinModal(rec) {
     title: isNewBest(rec) ? '🎉 新纪录！' : '恭喜完成',
     body,
     actions: [
-      { label: '查看复盘', ghost: true, onClick: () => openReplay(rec) },
+      { label: '查看复盘', ghost: true, onClick: () => { closeModal(); openReplay(rec); } },
       { label: '再来一局', primary: true, onClick: () => newGameFlow() },
     ],
   });

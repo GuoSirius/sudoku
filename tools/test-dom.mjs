@@ -77,6 +77,14 @@ function findAll(root, cls, out = []) {
   }
   return out;
 }
+function findByText(root, text) {
+  if (root.textContent === text) return root;
+  for (const c of root.children) {
+    const found = findByText(c, text);
+    if (found) return found;
+  }
+  return null;
+}
 
 const elements = {};
 const docListeners = {};
@@ -166,6 +174,16 @@ for (const i of empties) {
 }
 assert(hist().some((r) => r.won), '通关后写入历史（won）');
 assert(cur() === null, '通关后当前局已清空');
+
+// 通关弹窗：点「查看复盘」应关闭弹窗并进入复盘
+const replayBtn = findByText(elements['modal-root'], '查看复盘');
+assert(!!replayBtn, '通关弹窗有「查看复盘」按钮');
+replayBtn.click();
+assert(!elements['modal-root'].classList.contains('show'), '点查看复盘后弹窗关闭');
+assert(!elements['screen-replay'].classList.contains('hidden'), '点查看复盘后进入复盘页');
+assert(elements['replay-step'].textContent.startsWith('0 /'), '复盘初始步数正确');
+elements['btn-replay-back'].click(); // 返回历史，继续后续历史列表测试
+assert(!elements['screen-history'].classList.contains('hidden'), '从复盘返回历史页');
 
 // 历史 -> 复盘
 elements['btn-history'].click();
