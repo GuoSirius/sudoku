@@ -468,6 +468,62 @@ function showWinModal(rec) {
   });
 }
 
+// 从复盘走子序列重建当前盘面与笔记（用于「继续」未完成对局）
+function rebuildFromMoves(puzzle, moves) {
+  const cells = puzzle.slice();
+  const notes = Array.from({ length: 81 }, () => []);
+  for (const m of moves || []) {
+    if (m.kind === 'note') {
+      const arr = notes[m.idx];
+      const p = arr.indexOf(m.val);
+      if (p >= 0) arr.splice(p, 1);
+      else arr.push(m.val);
+    } else {
+      cells[m.idx] = m.val; // set / erase / hint
+      notes[m.idx] = [];
+    }
+  }
+  return { cells, notes };
+}
+
+// 把一条「未完成」历史恢复为当前对局并进入游戏继续玩
+function resumeFromHistory(rec) {
+  const { cells, notes } = rebuildFromMoves(rec.puzzle, rec.moves);
+  // 已错误格先计入 revealedWrong，避免后续「检查」重复计数（不额外泄题）
+  const revealedWrong = new Set();
+  for (let i = 0; i < 81; i++) {
+    if (cells[i] !== 0 && cells[i] !== rec.solution[i]) revealedWrong.add(i);
+  }
+  // 避免丢失正在进行的另一局：先将其归档为历史
+  const cur = storage.getCurrent();
+  if (cur && cur.status !== 'won' && cur.id !== rec.id) archiveCurrent();
+
+  game = Game.fromJSON({
+    id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
+    puzzle: rec.puzzle.slice(),
+    solution: rec.solution.slice(),
+    cells,
+    notes,
+    difficulty: rec.difficulty,
+    elapsedMs: rec.durationMs || 0,
+    mistakes: rec.mistakes || 0,
+    revealedWrong,
+    status: 'playing',
+    createdAt: rec.date,
+    moves: (rec.moves || []).slice(),
+    hintsUsed: rec.hintsUsed || 0,
+  });
+  noteMode = false;
+  $('btn-notes').classList.remove('active');
+  saveCurrent();
+  $('pause-overlay').classList.add('hidden');
+  $('board').classList.remove('paused');
+  $('btn-pause').textContent = '⏸';
+  $('btn-pause').title = '暂停';
+  enterGame();
+  toast('已载入未完成的这局，继续加油！');
+}
+
 // ---------------- 历史 ----------------
 function renderHistory() {
   const list = $('history-list');
@@ -480,19 +536,55 @@ function renderHistory() {
   h.forEach((rec) => {
     const row = document.createElement('div');
     row.className = 'row';
+
+    const main = document.createElement('div');
+    main.className = 'row-main';
+    const title = document.createElement('div');
+    title.className = 'row-title';
     const d = DIFFICULTIES.find((x) => x.id === rec.difficulty);
-    row.innerHTML = `
-      <div class="row-main">
-        <div class="row-title">
-          <span class="tag d-${rec.difficulty}">${d ? d.label : rec.difficulty}</span>
-          <span class="tag ${rec.won ? 'win' : 'lose'}">${rec.won ? '完成' : '未完成'}</span>
-        </div>
-        <div class="row-sub">${new Date(rec.date).toLocaleString('zh-CN')} · 错误 ${rec.mistakes} · 提示 ${
-      rec.hintsUsed || 0
-    }</div>
-      </div>
-      <div class="row-right">${formatTime(rec.durationMs)}</div>`;
-    row.onclick = () => openReplay(rec);
+    const tagDiff = document.createElement('span');
+    tagDiff.className = 'tag d-' + rec.difficulty;
+    tagDiff.textContent = d ? d.label : rec.difficulty;
+    const tagWin = document.createElement('span');
+    tagWin.className = 'tag ' + (rec.won ? 'win' : 'lose');
+    tagWin.textContent = rec.won ? '完成' : '未完成';
+    title.appendChild(tagDiff);
+    title.appendChild(tagWin);
+    const sub = document.createElement('div');
+    sub.className = 'row-sub';
+    sub.textContent =
+      new Date(rec.date).toLocaleString('zh-CN') + ' · 错误 ' + rec.mistakes + ' · 提示 ' + (rec.hintsUsed || 0);
+    main.appendChild(title);
+    main.appendChild(sub);
+
+    const right = document.createElement('div');
+    right.className = 'row-right';
+    right.textContent = formatTime(rec.durationMs);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    if (!rec.won) {
+      const resumeBtn = document.createElement('button');
+      resumeBtn.className = 'btn btn-primary btn-sm';
+      resumeBtn.textContent = '继续';
+      resumeBtn.onclick = (e) => {
+        e.stopPropagation();
+        resumeFromHistory(rec);
+      };
+      actions.appendChild(resumeBtn);
+    }
+    const replayBtn = document.createElement('button');
+    replayBtn.className = 'btn btn-ghost btn-sm';
+    replayBtn.textContent = '复盘';
+    replayBtn.onclick = (e) => {
+      e.stopPropagation();
+      openReplay(rec);
+    };
+    actions.appendChild(replayBtn);
+
+    row.appendChild(main);
+    row.appendChild(right);
+    row.appendChild(actions);
     list.appendChild(row);
   });
 }

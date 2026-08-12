@@ -207,12 +207,40 @@ assert(!elements['screen-history'].classList.contains('hidden'), '从复盘返�
 elements['btn-history'].click();
 const rows = elements['history-list'].children;
 assert(rows.length >= 1, '历史列表有记录');
-rows[0].click(); // 打开复盘
+findByText(rows[0], '复盘').click(); // 点行内「复盘」按钮打开复盘
 assert(elements['replay-step'].textContent.startsWith('0 /'), '复盘初始步数正确');
 elements['rp-next'].click();
 assert(elements['replay-step'].textContent.startsWith('1 /'), '复盘下一步生效');
 elements['rp-last'].click();
 assert(elements['replay-step'].textContent.startsWith(String(hist()[0].moves.length) + ' /'), '复盘跳到结尾');
+
+// 未完成记录：继续 / 复盘 区分
+const SOL = [5,3,4,6,7,8,9,1,2, 6,7,2,1,9,5,3,4,8, 1,9,8,3,4,2,5,6,7, 8,5,9,7,6,1,4,2,3, 4,2,6,8,5,3,7,9,1, 7,1,3,9,2,4,8,5,6, 9,6,1,5,3,7,2,8,4, 2,8,7,4,1,9,6,3,5, 3,4,5,2,8,6,1,7,9];
+const PZ = SOL.slice();
+PZ[0] = 0;
+PZ[5] = 0;
+store['sudoku:history'] = JSON.stringify([
+  { id: 'seed-won', difficulty: 'easy', durationMs: 123000, mistakes: 2, hintsUsed: 0, won: true, date: Date.now(), puzzle: [], solution: [], moves: [] },
+  { id: 'unfin-1', difficulty: 'medium', durationMs: 456000, mistakes: 1, hintsUsed: 0, won: false, date: Date.now(), puzzle: PZ, solution: SOL, moves: [{ idx: 5, val: SOL[5], kind: 'set', t: 1000 }] },
+]);
+elements['btn-history'].click(); // 重新渲染历史列表
+const allRows = elements['history-list'].children;
+assert(allRows.length === 2, '历史列表含 2 条记录');
+const wonRowT = [...allRows].find((r) => findByText(r, '完成'));
+assert(wonRowT && !findByText(wonRowT, '继续'), '已完成记录仅「复盘」、无「继续」');
+const unfinRowT = [...allRows].find((r) => findByText(r, '未完成'));
+assert(unfinRowT && findByText(unfinRowT, '继续'), '未完成记录有「继续」按钮');
+findByText(unfinRowT, '继续').click();
+assert(!elements['screen-game'].classList.contains('hidden'), '点「继续」进入游戏界面');
+const cg = cur();
+assert(cg && cg.status === 'playing' && cg.cells[5] === SOL[5], '继续：恢复当前局并重放走子（cells[5]=解）');
+elements['btn-history'].click();
+const unfinRowT2 = [...elements['history-list'].children].find((r) => findByText(r, '未完成'));
+findByText(unfinRowT2, '复盘').click();
+assert(!elements['screen-replay'].classList.contains('hidden'), '未完成记录点「复盘」进入复盘页');
+elements['btn-replay-back'].click();
+// 清理：本测试把历史恢复成了当前对局，移除它以免污染后续「新游戏」流程
+localStorage.removeItem('sudoku:current');
 
 // 笔记模式
 elements['btn-new'].click();
