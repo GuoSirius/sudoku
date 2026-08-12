@@ -58,7 +58,12 @@ function restoreScreen() {
     game = Game.fromJSON(cur);
     noteMode = false;
     $('btn-notes').classList.remove('active');
-    if (game.status === 'paused') $('pause-overlay').classList.remove('hidden');
+    if (game.status === 'paused') {
+      $('pause-overlay').classList.remove('hidden');
+      $('board').classList.add('paused');
+      $('btn-pause').textContent = '▶';
+      $('btn-pause').title = '继续';
+    }
     enterGame();
     return;
   }
@@ -150,6 +155,9 @@ function stopTimerLoop() {
 }
 function enterGame() {
   showScreen('game');
+  $('board').classList.remove('paused');
+  $('btn-pause').textContent = '⏸';
+  $('btn-pause').title = '暂停';
   game.startTimer();
   renderGame();
   startTimerLoop();
@@ -242,7 +250,11 @@ function resumeGame() {
   noteMode = false;
   $('btn-notes').classList.remove('active');
   if (game.status === 'paused') game.resumeTimer();
+  saveCurrent();
   $('pause-overlay').classList.add('hidden');
+  $('board').classList.remove('paused');
+  $('btn-pause').textContent = '⏸';
+  $('btn-pause').title = '暂停';
   enterGame();
 }
 function archiveCurrent() {
@@ -305,22 +317,37 @@ function openDifficultyModal(onPick) {
     actions: [{ label: '取消', ghost: true, onClick: closeModal }],
   });
 }
+// 暂停：非阻塞——停在游戏界面，棋盘保留可见（仅变暗提示），计时停止，进度保留
 function pauseGame() {
-  if (!game) return;
+  if (!game || game.status !== 'playing') return;
   game.pauseTimer();
   game.status = 'paused';
   saveCurrent();
   $('pause-overlay').classList.remove('hidden');
+  $('board').classList.add('paused');
+  $('btn-pause').textContent = '▶';
+  $('btn-pause').title = '继续';
   stopTimerLoop();
 }
 function resumeGamePlay() {
   if (!game) return;
   game.resumeTimer();
+  saveCurrent();
   $('pause-overlay').classList.add('hidden');
+  $('board').classList.remove('paused');
+  $('btn-pause').textContent = '⏸';
+  $('btn-pause').title = '暂停';
   startTimerLoop();
   renderGame();
 }
+// ⏸ 按钮：暂停/继续切换
+function togglePause() {
+  if (!game) return;
+  if (game.status === 'paused') resumeGamePlay();
+  else pauseGame();
+}
 function saveExit() {
+  // 保存并退出到首页：保留 paused 状态与进度，可在首页「继续游戏」续玩
   if (!game) {
     showScreen('menu');
     return;
@@ -329,6 +356,9 @@ function saveExit() {
   game.status = 'paused';
   saveCurrent();
   $('pause-overlay').classList.add('hidden');
+  $('board').classList.remove('paused');
+  $('btn-pause').textContent = '⏸';
+  $('btn-pause').title = '暂停';
   showScreen('menu');
 }
 function restartGame() {
@@ -613,7 +643,21 @@ function init() {
     if (storage.getSettings().theme === 'auto') applyTheme('auto');
   });
 
-  $('btn-home').onclick = () => showScreen('menu');
+  $('btn-home').onclick = () => {
+    // 游戏中返回首页：先暂停（停止计时、保留进度），避免计时偷偷继续
+    if (game && game.status === 'playing') {
+      game.pauseTimer();
+      game.status = 'paused';
+      saveCurrent();
+    }
+    if (game) {
+      $('pause-overlay').classList.add('hidden');
+      $('board').classList.remove('paused');
+      $('btn-pause').textContent = '⏸';
+      $('btn-pause').title = '暂停';
+    }
+    showScreen('menu');
+  };
   $('btn-theme').onclick = () => {
     const order = ['auto', 'light', 'dark'];
     const cur = storage.getSettings().theme;
@@ -638,7 +682,7 @@ function init() {
     showScreen('settings');
   };
 
-  $('btn-pause').onclick = pauseGame;
+  $('btn-pause').onclick = togglePause;
   $('btn-resume-game').onclick = resumeGamePlay;
   $('btn-exit-pause').onclick = saveExit;
   $('btn-notes').onclick = toggleNotes;

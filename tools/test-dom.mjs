@@ -231,6 +231,25 @@ assert(elements['toast'].textContent === '请先选择一个格子', '未选中�
 dispatchKey('Backspace'); // 同样不擦除
 assert(cur().cells[fe] === before, '未选中格按 Backspace 不擦除');
 
+// 暂停优化：非阻塞、可退出首页保留进度、计时停止、回来可继续
+assert(cur().status === 'playing', '续玩后状态为 playing（暂停测试前置）');
+elements['btn-pause'].click(); // ⏸ 暂停
+assert(cur().status === 'paused', '点击⏸后状态变为 paused');
+assert(!elements['pause-overlay'].classList.contains('hidden'), '暂停后显示暂停横幅（非全屏遮挡）');
+assert(elements['btn-pause'].textContent === '▶', '⏸按钮切换为「继续」图标');
+const pe = cur().cells.findIndex((v) => v === 0);
+const beforePause = cur().cells[pe];
+elements['board'].children[pe].click(); // 选中空格
+elements['pad-numbers'].children[5].click(); // 暂停态试填 6 -> 应被拦截
+assert(cur().cells[pe] === beforePause, '暂停态下点击数字盘不落子（落子被状态拦截）');
+elements['btn-home'].click(); // 暂停态点☰返回首页
+assert(!elements['screen-menu'].classList.contains('hidden'), '暂停态点☰返回首页');
+assert(cur() && cur().status === 'paused', '返回首页后游戏仍为 paused（进度保留，计时不偷跑）');
+assert(!elements['btn-resume'].classList.contains('hidden'), '首页显示「继续游戏」（可回来续玩）');
+elements['btn-resume'].click(); // 从首页继续
+assert(cur().status === 'playing', '从首页继续后状态恢复 playing');
+assert(elements['pause-overlay'].classList.contains('hidden'), '继续后暂停横幅隐藏');
+
 // 切页持久化：进入排行榜应记录当前页（供刷新恢复）
 elements['btn-leaderboard'].click();
 assert(
