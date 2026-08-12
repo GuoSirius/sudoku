@@ -312,18 +312,21 @@ body {
 }
 .cell .notes {
   position: absolute;
-  inset: 0;
+  inset: 3px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  font-size: clamp(8px, 2.4vw, 11px);
-  font-weight: 500;
+  font-size: clamp(11px, 3.2vw, 15px);
+  font-weight: 700;
   color: var(--muted);
   pointer-events: none;
 }
 .cell .notes span {
   display: grid;
   place-items: center;
+  line-height: 1;
+  width: 100%;
+  height: 100%;
 }
 
 /* 暂停遮罩 */
