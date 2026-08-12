@@ -10,6 +10,7 @@ const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings']
 
 let game = null; // 当前 Game 实例
 let noteMode = false;
+let ctrlHeld = false; // PC 组合键：按住 Ctrl 默认笔记模式（单击候选数=记候选）
 let timerId = null;
 let replayRec = null;
 let replayStep = 0;
@@ -190,6 +191,8 @@ function renderGame() {
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();
 }
+// 双击判定窗口：用于区分「单击记候选」与「双击填入」
+const DOUBLE_CLICK_MS = 300;
 function renderPad() {
   const wrap = $('pad-numbers');
   wrap.innerHTML = '';
@@ -198,7 +201,18 @@ function renderPad() {
     const b = document.createElement('button');
     b.className = 'num' + (rem[n] === 0 ? ' done' : '');
     b.innerHTML = `${n}<span class="remain">${rem[n]}</span>`;
-    b.onclick = () => inputNumber(n);
+    let lastClick = 0;
+    b.addEventListener('click', () => {
+      const now = Date.now();
+      if (now - lastClick < DOUBLE_CLICK_MS) return; // 双击的第二次 click：交给 dblclick 处理
+      lastClick = now;
+      // 单击 = 切换候选（添加/取消），无论是否处于笔记模式
+      if (game.setCell(game.selected, n, true)) afterMove();
+    });
+    b.addEventListener('dblclick', () => {
+      game.setCell(game.selected, n, true); // 撤销刚才这次单击的候选切换
+      game.setCell(game.selected, n, false) && afterMove(); // 双击 = 正式填入
+    });
     wrap.appendChild(b);
   }
 }
@@ -215,12 +229,13 @@ function onNoteClick(i, n) {
   const ok = noteMode ? game.setCell(i, n, true) : game.setCell(i, n, false);
   if (ok) afterMove();
 }
-function inputNumber(n) {
+function inputNumber(n, forceNote = false) {
   if (!game || game.selected == null) {
     toast('请先选择一个格子');
     return;
   }
-  if (game.setCell(game.selected, n, noteMode)) afterMove();
+  // 键盘：默认填入；笔记模式或按住 Ctrl 时记候选（与数字盘单击一致）
+  if (game.setCell(game.selected, n, noteMode || forceNote)) afterMove();
 }
 function eraseSelected() {
   if (!game || game.selected == null) return;
@@ -764,7 +779,7 @@ function moveSelection(key) {
 function onKey(e) {
   if ($('screen-game').classList.contains('hidden') || !game) return;
   if (e.key >= '1' && e.key <= '9') {
-    inputNumber(parseInt(e.key, 10));
+    inputNumber(parseInt(e.key, 10), e.ctrlKey || ctrlHeld);
     e.preventDefault();
   } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
     eraseSelected();
@@ -902,6 +917,13 @@ function init() {
   };
 
   document.addEventListener('keydown', onKey);
+  // PC 组合键：按住 Ctrl 默认笔记模式（松开复位）
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Control') ctrlHeld = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Control') ctrlHeld = false;
+  });
   window.addEventListener('beforeunload', () => {
     if (game && game.status === 'playing') {
       game.pauseTimer();

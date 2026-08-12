@@ -372,6 +372,13 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+.pad-hint {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .pad-numbers {
   display: grid;
   grid-template-columns: repeat(9, 1fr);

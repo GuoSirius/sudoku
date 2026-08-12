@@ -64,6 +64,10 @@ class El {
     (this._listeners['click'] || []).forEach((f) => f(ev));
     if (this._onclick) this._onclick(ev);
   }
+  dblclick() {
+    const ev = { stopPropagation() {} };
+    (this._listeners['dblclick'] || []).forEach((f) => f(ev));
+  }
   querySelectorAll(sel) {
     if (sel === '.seg-btn') return findAll(this, 'seg-btn');
     return [];
@@ -138,8 +142,8 @@ let fail = 0;
 const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
 
 // 模拟向 document 派发 keydown（复用 main.js 注册的监听器）
-function dispatchKey(key) {
-  const ev = { key, preventDefault() {} };
+function dispatchKey(key, opts = {}) {
+  const ev = { key, ctrlKey: !!opts.ctrl, preventDefault() {} };
   (docListeners['keydown'] || []).forEach((f) => f(ev));
 }
 
@@ -188,7 +192,9 @@ for (let i = 0; i < 81; i++) if (g.puzzle[i] === 0) empties.push(i);
 for (const i of empties) {
   elements['board'].children[i].click(); // 选中
   const n = g.solution[i];
-  elements['pad-numbers'].children[n - 1].click(); // 填正确值
+  const pb = elements['pad-numbers'].children[n - 1];
+  pb.click(); // 单击=记候选
+  pb.dblclick(); // 双击=填入（正确值）
 }
 assert(hist().some((r) => r.won), '通关后写入历史（won）');
 assert(cur() === null, '通关后当前局已清空');
@@ -320,7 +326,9 @@ assert(mset === 'conflict', '默认错误提示为「仅冲突」');
 const we = cur().cells.findIndex((v) => v === 0);
 const wval = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((n) => n !== cur().solution[we]);
 elements['board'].children[we].click(); // 选中空格
-elements['pad-numbers'].children[wval - 1].click(); // 填一个确定错误的值
+const wpb = elements['pad-numbers'].children[wval - 1];
+wpb.click(); // 单击=记候选
+wpb.dblclick(); // 双击=填入（确定错误的值）
 assert(!elements['board'].children[we]._classes.has('wrong'), '仅冲突模式下填错不标红（不泄题）');
 assert(cur().mistakes === 0, '仅冲突模式下填错不自动计错');
 elements['btn-check'].click(); // 手动「检查」
@@ -330,6 +338,22 @@ assert(
   cur().mistakes === wrongCount,
   `「检查」后错误数等于当前错误格数（${wrongCount}）`
 );
+
+// 数字盘交互：单击记候选 / 双击填入
+const ne = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[ne].click(); // 选中空格
+const nBefore = cur().cells[ne];
+elements['pad-numbers'].children[2].click(); // 单击 3 = 记候选
+assert(cur().cells[ne] === nBefore && cur().notes[ne].includes(3), '单击数字盘=记候选（不填入）');
+const pb3 = elements['pad-numbers'].children[2];
+pb3.dblclick(); // 双击 3 = 填入（撤销单击的候选并写入正式值）
+assert(cur().cells[ne] === 3 && cur().notes[ne].length === 0, '双击数字盘=填入并清空该格候选');
+// PC 组合键：Ctrl+数字键 = 记候选（笔记模式），不填入
+const ce = cur().cells.findIndex((v) => v === 0);
+elements['board'].children[ce].click();
+dispatchKey('8', { ctrl: true }); // 按住 Ctrl + 8
+assert(cur().notes[ce].includes(8), 'Ctrl+数字键=记候选（笔记模式）');
+assert(cur().cells[ce] === 0, 'Ctrl+数字键不填入正式值');
 
 // 切页持久化：进入排行榜应记录当前页（供刷新恢复）
 elements['btn-leaderboard'].click();
