@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="一个可安装的网页数独游戏：计时、个人排行榜、历史复盘、中途暂存续玩。纯前端，离线可用。" />
+    <title>数独 Sudoku</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="theme-auto">
+      <header class="appbar">
+        <button class="icon-btn" id="btn-home" title="返回首页" aria-label="返回首页">☰</button>
+        <h1 class="appbar-title">数独</h1>
+        <button class="icon-btn" id="btn-theme" title="切换明暗主题" aria-label="切换主题">🌓</button>
+      </header>
+
+      <main id="main">
+        <!-- 首页 -->
+        <section class="screen" id="screen-menu">
+          <div class="menu">
+            <div class="menu-hero">
+              <div class="menu-logo">数独</div>
+              <p class="menu-sub">Sudoku · 计时 · 排行 · 复盘</p>
+            </div>
+            <button class="btn btn-primary btn-block" id="btn-resume">继续游戏</button>
+            <button class="btn btn-block" id="btn-new">新游戏</button>
+            <div class="menu-row">
+              <button class="btn btn-ghost" id="btn-history">历史记录</button>
+              <button class="btn btn-ghost" id="btn-leaderboard">排行榜</button>
+            </div>
+            <button class="btn btn-ghost btn-block" id="btn-settings">设置</button>
+            <p class="menu-foot" id="menu-stat"></p>
+          </div>
+        </section>
+
+        <!-- 游戏 -->
+        <section class="screen hidden" id="screen-game">
+          <div class="game-top">
+            <span class="badge" id="game-difficulty">中等</span>
+            <div class="game-stats">
+              <span class="stat"><span class="stat-label">时间</span><b id="game-timer">00:00</b></span>
+              <span class="stat"><span class="stat-label">错误</span><b id="game-mistakes">0</b></span>
+              <span class="stat"><span class="stat-label">剩余</span><b id="game-remaining">81</b></span>
+            </div>
+            <button class="icon-btn" id="btn-pause" title="暂停" aria-label="暂停">⏸</button>
+          </div>
+          <div class="board-wrap">
+            <div class="board" id="board"></div>
+            <div class="pause-overlay hidden" id="pause-overlay">
+              <div class="pause-card">
+                <div class="pause-title">已暂停</div>
+                <button class="btn btn-primary btn-block" id="btn-resume-game">继续</button>
+                <button class="btn btn-ghost btn-block" id="btn-exit-pause">保存并退出</button>
+              </div>
+            </div>
+          </div>
+          <div class="pad">
+            <div class="pad-numbers" id="pad-numbers"></div>
+            <div class="pad-tools">
+              <button class="tool" id="btn-notes"><span class="tool-ico">✏️</span><span>笔记</span></button>
+              <button class="tool" id="btn-erase"><span class="tool-ico">⌫</span><span>擦除</span></button>
+              <button class="tool" id="btn-hint"><span class="tool-ico">💡</span><span>提示</span></button>
+            </div>
+          </div>
+          <div class="game-actions">
+            <button class="btn btn-ghost" id="btn-restart">重开本局</button>
+            <button class="btn btn-ghost" id="btn-new2">新游戏</button>
+          </div>
+        </section>
+
+        <!-- 历史 -->
+        <section class="screen hidden" id="screen-history">
+          <div class="screen-head">
+            <h2>历史记录</h2>
+            <button class="btn btn-danger-ghost btn-sm" id="btn-clear-history">清空</button>
+          </div>
+          <div class="list" id="history-list"></div>
+        </section>
+
+        <!-- 复盘 -->
+        <section class="screen hidden" id="screen-replay">
+          <div class="screen-head">
+            <h2>复盘</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-replay-back">返回</button>
+          </div>
+          <div class="replay-info" id="replay-info"></div>
+          <div class="board-wrap">
+            <div class="board" id="replay-board"></div>
+          </div>
+          <div class="replay-bar">
+            <button class="icon-btn" id="rp-first" title="开头">⏮</button>
+            <button class="icon-btn" id="rp-prev" title="上一步">◀</button>
+            <button class="icon-btn" id="rp-play" title="播放/暂停">▶</button>
+            <button class="icon-btn" id="rp-next" title="下一步">▶▶</button>
+            <button class="icon-btn" id="rp-last" title="结尾">⏭</button>
+          </div>
+          <div class="replay-step" id="replay-step">0 / 0</div>
+        </section>
+
+        <!-- 排行榜 -->
+        <section class="screen hidden" id="screen-leaderboard">
+          <div class="screen-head">
+            <h2>排行榜</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-leaderboard-back">返回</button>
+          </div>
+          <div class="leaderboard" id="leaderboard-body"></div>
+        </section>
+
+        <!-- 设置 -->
+        <section class="screen hidden" id="screen-settings">
+          <div class="screen-head">
+            <h2>设置</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-settings-back">返回</button>
+          </div>
+          <div class="settings">
+            <div class="setting-group">
+              <label class="setting-label">默认难度</label>
+              <div class="seg" id="set-difficulty"></div>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">主题</label>
+              <div class="seg" id="set-theme">
+                <button data-v="auto" class="seg-btn">跟随系统</button>
+                <button data-v="light" class="seg-btn">浅色</button>
+                <button data-v="dark" class="seg-btn">深色</button>
+              </div>
+            </div>
+            <div class="setting-group">
+              <button class="btn btn-danger-ghost btn-block" id="btn-clear-data">清除全部本地数据</button>
+              <p class="setting-hint">将删除当前对局、历史记录与排行榜，设置保留。</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div id="modal-root"></div>
+      <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
