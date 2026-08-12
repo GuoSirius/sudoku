@@ -132,7 +132,8 @@ function renderGame() {
   buildBoard(
     $('board'),
     { cells: game.cells, notes: game.notes, given, selected: game.selected, conflicts, wrong },
-    onCellClick
+    onCellClick,
+    onNoteClick
   );
   renderPad();
   $('game-difficulty').textContent = diffLabel(game.difficulty);
@@ -155,6 +156,12 @@ function renderPad() {
 function onCellClick(i) {
   game.selected = i;
   renderGame();
+}
+// 点击某格内的笔记小数字：直接把该候选升级为正式值（无论当前是否为笔记模式）
+function onNoteClick(i, n) {
+  if (!game || game.status !== 'playing' || game.isGiven(i) || game.cells[i] !== 0) return;
+  game.selected = i;
+  if (game.setCell(i, n, false)) afterMove();
 }
 function inputNumber(n) {
   if (!game || game.selected == null) {

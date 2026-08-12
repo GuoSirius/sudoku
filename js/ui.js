@@ -31,7 +31,8 @@ export function computeSameNum(cells, idx) {
 
 // 渲染 9x9 棋盘。state: { cells, notes, given[], selected, conflicts:Set, wrong:Set }
 // onCellClick(idx) 可选，提供则格子可点击
-export function buildBoard(root, state, onCellClick) {
+// onNoteClick(idx, n) 可选，点击某格内的笔记小数字时触发（用于把笔记直接升级为正式值）
+export function buildBoard(root, state, onCellClick, onNoteClick) {
   root.innerHTML = '';
   const { cells, notes, given, selected, conflicts, wrong } = state;
   const peers = selected != null ? computePeers(selected) : null;
@@ -62,7 +63,15 @@ export function buildBoard(root, state, onCellClick) {
       note.className = 'notes';
       for (let n = 1; n <= 9; n++) {
         const span = document.createElement('span');
-        span.textContent = notes[i].includes(n) ? n : '';
+        if (notes[i].includes(n)) {
+          span.textContent = n;
+          if (onNoteClick) {
+            span.addEventListener('click', (e) => {
+              e.stopPropagation();
+              onNoteClick(i, n);
+            });
+          }
+        }
         note.appendChild(span);
       }
       cell.appendChild(note);

@@ -60,8 +60,9 @@ class El {
     return this._onclick;
   }
   click() {
-    (this._listeners['click'] || []).forEach((f) => f({}));
-    if (this._onclick) this._onclick({});
+    const ev = { stopPropagation() {} };
+    (this._listeners['click'] || []).forEach((f) => f(ev));
+    if (this._onclick) this._onclick(ev);
   }
   querySelectorAll(sel) {
     if (sel === '.seg-btn') return findAll(this, 'seg-btn');
@@ -170,6 +171,17 @@ elements['board'].children[e0].click();
 elements['btn-notes'].click(); // 开启笔记
 elements['pad-numbers'].children[3].click(); // 记 4
 assert(cur().notes[e0].includes(4), '笔记模式写入候选数');
+
+// 笔记转正式数字：点击笔记小数字应直接填入并清空该格笔记
+const noteEl = elements['board'].children[e0].children.find((c) => c._classes.has('notes'));
+const span4 = noteEl && noteEl.children.find((s) => s.textContent === '4');
+assert(!!span4, '笔记格渲染出可点击的候选数字');
+if (span4) span4.click();
+const afterNote = cur();
+assert(
+  afterNote.cells[e0] === 4 && afterNote.notes[e0].length === 0,
+  '点击笔记数字直接升级为正式值并清空该格笔记'
+);
 
 // 暂存续玩
 elements['btn-save-exit'].click();
