@@ -14,6 +14,10 @@ export class Game {
     this.elapsedMs = data.elapsedMs || 0; // 已累计（暂停态）时长
     this._runningSince = null; // 计时起点（仅运行中非空）
     this.mistakes = data.mistakes || 0;
+    this.revealedWrong =
+      data.revealedWrong instanceof Set
+        ? data.revealedWrong
+        : new Set(data.revealedWrong || []);
     this.status = data.status || 'playing'; // playing | paused | won
     this.createdAt = data.createdAt;
     this.moves = data.moves || []; // 复盘用落子序列
@@ -52,6 +56,7 @@ export class Game {
       difficulty: this.difficulty,
       elapsedMs: this.elapsedMs,
       mistakes: this.mistakes,
+      revealedWrong: [...this.revealedWrong],
       status: this.status,
       createdAt: this.createdAt,
       moves: this.moves,
@@ -89,6 +94,21 @@ export class Game {
     return findConflicts(this.cells);
   }
 
+  // 手动「检查」：揭示当前所有填错的格子并计入错误数（每个错误格只计一次）
+  // 返回本次新揭示的错误数
+  revealWrong() {
+    let added = 0;
+    for (let i = 0; i < 81; i++) {
+      const wrong = this.cells[i] !== 0 && this.cells[i] !== this.solution[i];
+      if (wrong && !this.revealedWrong.has(i)) {
+        this.revealedWrong.add(i);
+        this.mistakes++;
+        added++;
+      }
+    }
+    return added;
+  }
+
   // ---- 落子 ----
   // noteMode: true 时写入/清除铅笔标记
   setCell(idx, val, noteMode) {
@@ -106,9 +126,8 @@ export class Game {
 
     if (this.cells[idx] === val) return false;
     this.cells[idx] = val;
-    if (val !== 0 && val !== this.solution[idx]) {
-      this.mistakes++;
-    }
+    // 注意：错误计数不再在落子时自动累加（会泄题）。
+    // 计数由上层按 mistakeMode 决定：full 模式即时计入；其余靠「检查」按钮按需计入。
     this.notes[idx] = []; // 填入数字后清空该格笔记
     this.moves.push({ idx, val, kind: val === 0 ? 'erase' : 'set', t: this.currentElapsed() });
     this.checkWin();

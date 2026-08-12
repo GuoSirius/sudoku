@@ -84,6 +84,7 @@
               <button class="tool" id="btn-notes"><span class="tool-ico">✏️</span><span>笔记</span></button>
               <button class="tool" id="btn-erase"><span class="tool-ico">⌫</span><span>擦除</span></button>
               <button class="tool" id="btn-hint"><span class="tool-ico">💡</span><span>提示</span></button>
+              <button class="tool" id="btn-check"><span class="tool-ico">🔍</span><span>检查</span></button>
             </div>
           </div>
           <div class="game-actions">
@@ -148,6 +149,11 @@
                 <button data-v="light" class="seg-btn">浅色</button>
                 <button data-v="dark" class="seg-btn">深色</button>
               </div>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">错误提示</label>
+              <div class="seg" id="set-mistake"></div>
+              <p class="setting-hint">关闭：不自动标红；仅冲突：只标重复数字（不泄题）；全量核对：逐格比对答案并即时计错。</p>
             </div>
             <div class="setting-group">
               <button class="btn btn-danger-ghost btn-block" id="btn-clear-data">清除全部本地数据</button>

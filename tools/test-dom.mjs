@@ -250,6 +250,23 @@ elements['btn-resume'].click(); // 从首页继续
 assert(cur().status === 'playing', '从首页继续后状态恢复 playing');
 assert(elements['pause-overlay'].classList.contains('hidden'), '继续后暂停横幅隐藏');
 
+// 错误提示：默认「仅冲突」模式不逐格比对答案（不泄题），「检查」按钮按需揭示
+const mset = (JSON.parse(localStorage.getItem('sudoku:settings') || '{}').mistakeMode) || 'conflict';
+assert(mset === 'conflict', '默认错误提示为「仅冲突」');
+const we = cur().cells.findIndex((v) => v === 0);
+const wval = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((n) => n !== cur().solution[we]);
+elements['board'].children[we].click(); // 选中空格
+elements['pad-numbers'].children[wval - 1].click(); // 填一个确定错误的值
+assert(!elements['board'].children[we]._classes.has('wrong'), '仅冲突模式下填错不标红（不泄题）');
+assert(cur().mistakes === 0, '仅冲突模式下填错不自动计错');
+elements['btn-check'].click(); // 手动「检查」
+assert(elements['board'].children[we]._classes.has('wrong'), '点「检查」后标红错误');
+const wrongCount = cur().cells.filter((v, i) => v !== 0 && v !== cur().solution[i]).length;
+assert(
+  cur().mistakes === wrongCount,
+  `「检查」后错误数等于当前错误格数（${wrongCount}）`
+);
+
 // 切页持久化：进入排行榜应记录当前页（供刷新恢复）
 elements['btn-leaderboard'].click();
 assert(

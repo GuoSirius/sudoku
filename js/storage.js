@@ -27,9 +27,10 @@ function write(key, val) {
 }
 
 export const storage = {
-  // 设置：{ difficulty, theme }
+  // 设置：{ difficulty, theme, mistakeMode }
+  // mistakeMode: 错误提示强度 —— off(关闭) / conflict(仅冲突) / full(全量核对，比对答案)
   getSettings() {
-    return read(KEYS.settings, { difficulty: 'medium', theme: 'dark' });
+    return read(KEYS.settings, { difficulty: 'medium', theme: 'dark', mistakeMode: 'conflict' });
   },
   setSettings(s) {
     write(KEYS.settings, { ...this.getSettings(), ...s });

@@ -16,14 +16,16 @@ const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
   assert(g.remaining() === 0, '胜利时剩余 0');
 }
 
-// 2) 填错计入错误，且 isWrong 正确
+// 2) 填错不再自动计错（避免泄题），需经「检查」才计入
 {
   const g = Game.newGame('medium');
   const empty = g.cells.findIndex((v, i) => v === 0);
   const wrong = g.solution[empty] === 9 ? 1 : 9; // 一个确定的错误值
   g.setCell(empty, wrong, false);
-  assert(g.mistakes === 1, '填错应计 1 次错误');
+  assert(g.mistakes === 0, '填错不应自动计错（计数交由模式/检查决定）');
   assert(g.isWrong(empty), '该格应标记为错误');
+  assert(g.revealWrong() === 1, '「检查」应揭示 1 处错误并计 1 次');
+  assert(g.mistakes === 1, '检查后错误数应为 1');
   // 改回正确
   g.setCell(empty, g.solution[empty], false);
   assert(g.isWrong(empty) === false, '改回正确后应非错误');

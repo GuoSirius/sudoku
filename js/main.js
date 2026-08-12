@@ -164,9 +164,16 @@ function enterGame() {
 }
 function renderGame() {
   const given = game.puzzle.map((v) => v !== 0);
-  const conflicts = game.conflicts();
+  // 错误提示强度（设置）：off=无自动高亮；conflict=仅冲突；full=逐格比对答案
+  const mode = storage.getSettings().mistakeMode || 'conflict';
+  const conflicts = mode === 'off' ? new Set() : game.conflicts();
   const wrong = new Set();
-  for (let i = 0; i < 81; i++) if (game.isWrong(i)) wrong.add(i);
+  if (mode === 'full') {
+    for (let i = 0; i < 81; i++) if (game.isWrong(i)) wrong.add(i);
+  } else {
+    // 非全量模式下，只有经「检查」揭示过的错误格才标红（避免泄题）
+    for (const i of game.revealedWrong) if (game.isWrong(i)) wrong.add(i);
+  }
   buildBoard(
     $('board'),
     { cells: game.cells, notes: game.notes, given, selected: game.selected, conflicts, wrong },
@@ -223,11 +230,27 @@ function useHint() {
   if (game.hint(game.selected)) afterMove();
   else toast('该格无需提示');
 }
+// 手动「检查」：按需揭示错误并计错（游戏中零自动泄题，想核对时再核对）
+function doCheck() {
+  if (!game || game.status !== 'playing') return;
+  const added = game.revealWrong();
+  saveCurrent();
+  renderGame();
+  toast(added > 0 ? `发现 ${added} 处错误` : '没有发现错误');
+}
 function toggleNotes() {
   noteMode = !noteMode;
   $('btn-notes').classList.toggle('active', noteMode);
 }
 function afterMove() {
+  // 错误计数：仅「全量核对」模式在落子时即时计入；其余模式靠「检查」按钮按需计入（避免泄题）
+  const mode = storage.getSettings().mistakeMode || 'conflict';
+  if (mode === 'full' && game.selected != null && game.isWrong(game.selected)) {
+    if (!game.revealedWrong.has(game.selected)) {
+      game.revealedWrong.add(game.selected);
+      game.mistakes++;
+    }
+  }
   renderGame();
   saveCurrent();
   if (game.status === 'won') onWin();
@@ -375,6 +398,7 @@ function restartGame() {
           game.cells = game.puzzle.slice();
           game.notes = Array.from({ length: 81 }, () => []);
           game.mistakes = 0;
+          game.revealedWrong = new Set();
           game.elapsedMs = 0;
           game._runningSince = null;
           game.status = 'playing';
@@ -602,6 +626,27 @@ function renderSettings() {
   [...$('set-theme').children].forEach((b) =>
     b.classList.toggle('active', b.dataset.v === s.theme)
   );
+  // 错误提示强度：关闭 / 仅冲突 / 全量核对
+  const mwrap = $('set-mistake');
+  if (mwrap) {
+    mwrap.innerHTML = '';
+    [
+      ['off', '关闭'],
+      ['conflict', '仅冲突'],
+      ['full', '全量核对'],
+    ].forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (v === (s.mistakeMode || 'conflict') ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        storage.setSettings({ mistakeMode: v });
+        renderSettings();
+        if (game) renderGame(); // 立即反映高亮变化
+        toast('错误提示：' + label);
+      };
+      mwrap.appendChild(b);
+    });
+  }
 }
 
 // ---------------- 键盘 ----------------
@@ -688,6 +733,7 @@ function init() {
   $('btn-notes').onclick = toggleNotes;
   $('btn-erase').onclick = eraseSelected;
   $('btn-hint').onclick = useHint;
+  $('btn-check').onclick = doCheck;
   $('btn-restart').onclick = restartGame;
   $('btn-new2').onclick = newGameFlow;
 
