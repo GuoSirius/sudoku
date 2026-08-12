@@ -146,6 +146,8 @@ function dispatchKey(key, opts = {}) {
   const ev = { key, ctrlKey: !!opts.ctrl, preventDefault() {} };
   (docListeners['keydown'] || []).forEach((f) => f(ev));
 }
+// 模拟人类点击间隔（>双击窗口 300ms），避免同步测试里「两次单击」被误判为双击
+const tick = () => new Promise((r) => setTimeout(r, 420));
 
 // 加载应用（init 会自执行）
 await import('../js/main.js');
@@ -194,7 +196,7 @@ for (const i of empties) {
   const n = g.solution[i];
   const pb = elements['pad-numbers'].children[n - 1];
   pb.click(); // 单击=记候选
-  pb.dblclick(); // 双击=填入（正确值）
+  elements['pad-numbers'].children[n - 1].click(); // 双击=填入（正确值，时间窗内第二次单击）
 }
 assert(hist().some((r) => r.won), '通关后写入历史（won）');
 assert(cur() === null, '通关后当前局已清空');
@@ -269,20 +271,16 @@ assert(!!s4, '笔记格渲染出可点击的候选数字');
 s4.click();
 assert(!cur().notes[e0].includes(4), '笔记模式下点击笔记数字 -> 取消(删除)该候选');
 
-// 普通模式：点击候选 -> 升级为正式值（笔记转正）
+// 无论是否笔记模式，单击单元格候选都只是切换(取消)该候选，不再「笔记转正」
 elements['btn-notes'].click(); // 关笔记模式
-elements['board'].children[e0].click(); // 选中
-elements['btn-notes'].click(); // 开笔记模式
+elements['btn-notes'].click(); // 开笔记模式（删候选时已选中 e0，无需再点格子）
 elements['pad-numbers'].children[6].click(); // 记 7
 elements['btn-notes'].click(); // 关笔记模式 -> 普通模式
+await tick(); // 清掉 s4.click 留下的 lastNote，避免 s7.click 被误判为双击
 const s7 = findNoteSpan(elements['board'].children[e0], 7);
 assert(!!s7, '普通模式下仍渲染候选数字 7');
 s7.click();
-const afterNote = cur();
-assert(
-  afterNote.cells[e0] === 7 && afterNote.notes[e0].length === 0,
-  '普通模式点击笔记数字 -> 升级为正式值并清空该格笔记'
-);
+assert(!cur().notes[e0].includes(7), '普通模式单击候选同样只是切换(取消)该候选，不自动转正');
 
 // 暂存续玩
 elements['btn-exit-pause'].click();
@@ -291,9 +289,9 @@ elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
 
 // 键盘输入：未选中格时按数字键应给出提示且不填入（避免误填）
-// 当前续玩局里 e0 已通过「笔记转正」填为 7；selected 不持久化，故续玩后为 null
-assert(cur().cells[e0] === 7, '续玩局 e0 仍为笔记转正后的值 7');
-const fe = cur().cells.findIndex((v) => v === 0); // 首个空格（e0 已填 7）
+// 新交互下单击候选只切换、不填值，故 e0 仍为空（cells[e0]===0）；selected 不持久化，续玩后为 null
+assert(cur().cells[e0] === 0, '续玩局 e0 未因单击候选而被填值（单击只切换候选）');
+const fe = cur().cells.findIndex((v) => v === 0); // 首个空格
 const before = cur().cells[fe];
 dispatchKey('3'); // 未选格 -> 仅提示，不填入
 assert(cur().cells[fe] === before, '未选中格按数字键不填入（避免误填）');
@@ -309,6 +307,7 @@ assert(!elements['pause-overlay'].classList.contains('hidden'), '暂停后显示
 assert(elements['btn-pause'].textContent === '▶', '⏸按钮切换为「继续」图标');
 const pe = cur().cells.findIndex((v) => v === 0);
 const beforePause = cur().cells[pe];
+await tick(); // 清掉前面候选交互留下的 lastNote，避免被误判为双击填入
 elements['board'].children[pe].click(); // 选中空格
 elements['pad-numbers'].children[5].click(); // 暂停态试填 6 -> 应被拦截
 assert(cur().cells[pe] === beforePause, '暂停态下点击数字盘不落子（落子被状态拦截）');
@@ -325,10 +324,11 @@ const mset = (JSON.parse(localStorage.getItem('sudoku:settings') || '{}').mistak
 assert(mset === 'conflict', '默认错误提示为「仅冲突」');
 const we = cur().cells.findIndex((v) => v === 0);
 const wval = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((n) => n !== cur().solution[we]);
+await tick(); // 清掉前面交互留下的 lastNote/lastPad
 elements['board'].children[we].click(); // 选中空格
 const wpb = elements['pad-numbers'].children[wval - 1];
 wpb.click(); // 单击=记候选
-wpb.dblclick(); // 双击=填入（确定错误的值）
+elements['pad-numbers'].children[wval - 1].click(); // 双击=填入（确定错误的值，时间窗内第二次单击）
 assert(!elements['board'].children[we]._classes.has('wrong'), '仅冲突模式下填错不标红（不泄题）');
 assert(cur().mistakes === 0, '仅冲突模式下填错不自动计错');
 elements['btn-check'].click(); // 手动「检查」
@@ -340,13 +340,14 @@ assert(
 );
 
 // 数字盘交互：单击记候选 / 双击填入
+await tick(); // 清掉前面交互留下的 lastNote/lastPad
 const ne = cur().cells.findIndex((v) => v === 0);
 elements['board'].children[ne].click(); // 选中空格
 const nBefore = cur().cells[ne];
 elements['pad-numbers'].children[2].click(); // 单击 3 = 记候选
 assert(cur().cells[ne] === nBefore && cur().notes[ne].includes(3), '单击数字盘=记候选（不填入）');
 const pb3 = elements['pad-numbers'].children[2];
-pb3.dblclick(); // 双击 3 = 填入（撤销单击的候选并写入正式值）
+elements['pad-numbers'].children[2].click(); // 双击 3 = 填入（撤销单击的候选并写入正式值，时间窗内第二次单击）
 assert(cur().cells[ne] === 3 && cur().notes[ne].length === 0, '双击数字盘=填入并清空该格候选');
 // PC 组合键：Ctrl+数字键 = 记候选（笔记模式），不填入
 const ce = cur().cells.findIndex((v) => v === 0);
@@ -354,6 +355,32 @@ elements['board'].children[ce].click();
 dispatchKey('8', { ctrl: true }); // 按住 Ctrl + 8
 assert(cur().notes[ce].includes(8), 'Ctrl+数字键=记候选（笔记模式）');
 assert(cur().cells[ce] === 0, 'Ctrl+数字键不填入正式值');
+
+// 单元格候选：单击切换、双击填入（与数字盘逻辑一致）
+const ci = (() => {
+  const gg = cur();
+  for (let i = 0; i < 81; i++) if (gg.puzzle[i] === 0 && gg.cells[i] === 0 && gg.notes[i].length === 0) return i;
+  return -1;
+})();
+assert(ci >= 0, '找到可用于候选交互的空格');
+await tick(); // 清掉前面交互留下的 lastNote/lastPad
+elements['board'].children[ci].click(); // 选中
+elements['pad-numbers'].children[4].click(); // 数字盘单击=给该格加候选 5
+assert(cur().notes[ci].includes(5), '数字盘单击为空格加候选 5');
+let sp5 = findNoteSpan(elements['board'].children[ci], 5);
+assert(!!sp5, '单元格渲染出候选 5');
+sp5.click(); // 单击候选 5 = 切换(取消)
+assert(!cur().notes[ci].includes(5), '单击单元格内候选 5 -> 取消(切换)该候选');
+// 等双击窗口过期，避免与下面的双击用例串扰（真实使用中两次操作间隔 >300ms）
+await new Promise((r) => setTimeout(r, 350));
+// 重新加候选 5，再双击（单击移除 + 点格子兜底填入）
+elements['pad-numbers'].children[4].click();
+sp5 = findNoteSpan(elements['board'].children[ci], 5);
+assert(!!sp5, '重新加候选 5 成功');
+sp5.click(); // 双击第一步：单击移除候选 5（记录 lastNote）
+assert(!cur().notes[ci].includes(5), '双击第一步：单击移除候选 5');
+elements['board'].children[ci].click(); // 双击第二步：落在格子 -> 选中并填入 5
+assert(cur().cells[ci] === 5 && cur().notes[ci].length === 0, '双击候选 5 -> 选中并填入 5');
 
 // 切页持久化：进入排行榜应记录当前页（供刷新恢复）
 elements['btn-leaderboard'].click();

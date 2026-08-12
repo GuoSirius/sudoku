@@ -160,6 +160,8 @@ function stopTimerLoop() {
 }
 function enterGame() {
   showScreen('game');
+  lastPad = null;
+  lastNote = null;
   $('board').classList.remove('paused');
   $('btn-pause').textContent = '⏸';
   $('btn-pause').title = '暂停';
@@ -191,8 +193,25 @@ function renderGame() {
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();
 }
-// 双击判定窗口：用于区分「单击记候选」与「双击填入」
+// 双击判定窗口（基于时间，不依赖原生 dblclick，避免棋盘/数字盘重建后失效）
 const DOUBLE_CLICK_MS = 300;
+let lastPad = null; // { n, t } 数字盘双击检测
+let lastNote = null; // { i, n, t } 单元格候选双击检测
+// 记录一次单击，并安排自动过期，避免残留状态在之后被误判为双击
+function setLastPad(n) {
+  const snap = { n, t: Date.now() };
+  lastPad = snap;
+  setTimeout(() => {
+    if (lastPad === snap) lastPad = null;
+  }, DOUBLE_CLICK_MS + 60);
+}
+function setLastNote(i, n) {
+  const snap = { i, n, t: Date.now() };
+  lastNote = snap;
+  setTimeout(() => {
+    if (lastNote === snap) lastNote = null;
+  }, DOUBLE_CLICK_MS + 60);
+}
 function renderPad() {
   const wrap = $('pad-numbers');
   wrap.innerHTML = '';
@@ -201,33 +220,58 @@ function renderPad() {
     const b = document.createElement('button');
     b.className = 'num' + (rem[n] === 0 ? ' done' : '');
     b.innerHTML = `${n}<span class="remain">${rem[n]}</span>`;
-    let lastClick = 0;
     b.addEventListener('click', () => {
+      if (!game || game.selected == null) {
+        toast('请先选择一个格子');
+        return;
+      }
       const now = Date.now();
-      if (now - lastClick < DOUBLE_CLICK_MS) return; // 双击的第二次 click：交给 dblclick 处理
-      lastClick = now;
+      // 双击：同一数字在窗口内再次点击 -> 选中并填入（先还原刚才的候选切换）
+      if (lastPad && lastPad.n === n && now - lastPad.t < DOUBLE_CLICK_MS) {
+        game.setCell(game.selected, n, true); // 还原候选（撤销单击切换）
+        if (game.setCell(game.selected, n, false)) afterMove(); // 填入正式值
+        lastPad = null;
+        return;
+      }
+      setLastPad(n);
       // 单击 = 切换候选（添加/取消），无论是否处于笔记模式
       if (game.setCell(game.selected, n, true)) afterMove();
-    });
-    b.addEventListener('dblclick', () => {
-      game.setCell(game.selected, n, true); // 撤销刚才这次单击的候选切换
-      game.setCell(game.selected, n, false) && afterMove(); // 双击 = 正式填入
     });
     wrap.appendChild(b);
   }
 }
 function onCellClick(i) {
+  const now = Date.now();
+  // 双击候选的第二次点击可能落在格子上（候选已被移除）-> 视为「选中填入」该候选
+  if (lastNote && lastNote.i === i && now - lastNote.t < DOUBLE_CLICK_MS) {
+    const n = lastNote.n;
+    lastNote = null;
+    game.selected = i;
+    game.setCell(i, n, true); // 还原候选（撤销第一次单击的切换）
+    if (game.setCell(i, n, false)) afterMove(); // 填入正式值
+    return;
+  }
   game.selected = i;
   renderGame();
 }
-// 点击某格内的笔记小数字：
-//  - 笔记模式下 -> 取消(删除)该候选
-//  - 普通模式下 -> 把该候选直接升级为正式值（笔记转正）
+// 单元格内候选数字交互（无论是否处于笔记模式）：
+//  - 单击 = 切换该候选（添加/取消）
+//  - 双击 = 选中并填入该候选数字
 function onNoteClick(i, n) {
   if (!game || game.status !== 'playing' || game.isGiven(i) || game.cells[i] !== 0) return;
+  const now = Date.now();
   game.selected = i;
-  const ok = noteMode ? game.setCell(i, n, true) : game.setCell(i, n, false);
-  if (ok) afterMove();
+  // 双击候选的第二次点击（可能落在同格别的候选或格子上）-> 选中并填入
+  if (lastNote && lastNote.i === i && now - lastNote.t < DOUBLE_CLICK_MS) {
+    const fillN = lastNote.n;
+    lastNote = null;
+    game.setCell(i, fillN, true); // 还原候选（撤销第一次单击的切换）
+    if (game.setCell(i, fillN, false)) afterMove(); // 填入正式值
+    return;
+  }
+  setLastNote(i, n);
+  // 单击 = 切换候选（添加/取消），无论是否处于笔记模式
+  if (game.setCell(i, n, true)) afterMove();
 }
 function inputNumber(n, forceNote = false) {
   if (!game || game.selected == null) {
