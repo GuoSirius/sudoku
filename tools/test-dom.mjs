@@ -115,6 +115,17 @@ const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
 await import('../js/main.js');
 assert(true, 'init 无异常');
 
+// 默认应为暗黑主题
+assert(
+  document.documentElement.classList.contains('theme-dark'),
+  '默认主题为暗黑（<html> 带 theme-dark）'
+);
+// 无进行中对局时，「继续游戏」按钮应默认隐藏
+assert(
+  elements['btn-resume'].classList.contains('hidden'),
+  '无进行中对局时「继续游戏」按钮隐藏'
+);
+
 const cur = () => JSON.parse(localStorage.getItem('sudoku:current') || 'null');
 const hist = () => JSON.parse(localStorage.getItem('sudoku:history') || '[]');
 
@@ -166,17 +177,20 @@ assert(cur() && cur().status === 'paused', '保存并退出后状态为 paused')
 elements['btn-resume'].click();
 assert(cur() !== null, '续玩后当前局仍存在');
 
-// 主题切换：主题类应挂在 <html>（根元素）上，整页背景随之变化
+// 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
 const htmlEl = document.documentElement;
 assert(
   htmlEl.classList.contains('theme-light') || htmlEl.classList.contains('theme-dark'),
   'init 后 <html> 已带主题类'
 );
-elements['btn-theme'].click(); // auto -> light
-elements['btn-theme'].click(); // light -> dark
+elements['btn-theme'].click(); // dark -> auto(跟随系统: 浅)
+assert(htmlEl.classList.contains('theme-light'), '跟随系统(浅色)切换生效');
+elements['btn-theme'].click(); // -> light(显式浅)
+assert(htmlEl.classList.contains('theme-light'), '显式浅色切换生效');
+elements['btn-theme'].click(); // -> dark(显式深)
 assert(
   htmlEl.classList.contains('theme-dark') && !htmlEl.classList.contains('theme-light'),
-  '切到深色后 <html> 为 theme-dark（背景随之变暗）'
+  '显式深色切换生效（背景随之变暗）'
 );
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);

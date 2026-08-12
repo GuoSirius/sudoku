@@ -11,7 +11,7 @@
       (function () {
         try {
           var s = JSON.parse(localStorage.getItem('sudoku:settings') || '{}');
-          var theme = s.theme || 'auto';
+          var theme = s.theme || 'dark';
           var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           var cls =
             theme === 'dark'

@@ -29,7 +29,7 @@ function write(key, val) {
 export const storage = {
   // 设置：{ difficulty, theme }
   getSettings() {
-    return read(KEYS.settings, { difficulty: 'medium', theme: 'auto' });
+    return read(KEYS.settings, { difficulty: 'medium', theme: 'dark' });
   },
   setSettings(s) {
     write(KEYS.settings, { ...this.getSettings(), ...s });
@@ -66,6 +66,17 @@ export const storage = {
     const lb = read(KEYS.leaderboard, []);
     lb.push(rec);
     write(KEYS.leaderboard, lb);
+  },
+
+  clearHistory() {
+    try {
+      localStorage.removeItem(KEYS.history);
+    } catch {}
+  },
+  clearLeaderboard() {
+    try {
+      localStorage.removeItem(KEYS.leaderboard);
+    } catch {}
   },
 
   // 清理个人数据（设置保留）
