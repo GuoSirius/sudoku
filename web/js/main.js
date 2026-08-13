@@ -960,11 +960,19 @@ function renderPersonalStats(lb, history) {
 
 // 排行榜行卡片：移动端友好。排名徽标 + 主信息(名称/难度 + 次级指标) + 主指标，flex 自适应。
 // 比 <table> 在窄屏更不易错乱拥挤。
+// 前十名徽标配色：1-3 金/银/铜，4-10 鲜明区分的色相；实色底+白字，深浅主题均直接可读。
+const RANK_COLORS = [
+  '#f59e0b', '#8a94a6', '#c17a3a', '#ef4444', '#16a34a',
+  '#2563eb', '#7c3aed', '#db2777', '#0d9488', '#ea580c',
+];
 function lbRow({ rank, nameHtml, tagHtml = '', metaHtml, primaryLabel, primaryVal, top = false }) {
+  const color = rank >= 1 && rank <= 10 ? RANK_COLORS[rank - 1] : '';
   const row = document.createElement('div');
-  row.className = 'lb-row' + (top ? ' top' : '');
+  row.className = 'lb-row' + (color ? ' accent' : '');
+  if (color) row.style.setProperty('--rank-color', color);
+  const badgeStyle = color ? ` style="background:${color};color:#fff"` : '';
   row.innerHTML = `
-    <div class="lb-rank ${top ? 'top' : ''}">${rank}</div>
+    <div class="lb-rank"${badgeStyle}>${rank}</div>
     <div class="lb-main">
       <div class="lb-name">${nameHtml}${tagHtml}</div>
       <div class="lb-meta">${metaHtml}</div>
