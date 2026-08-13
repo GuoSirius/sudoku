@@ -792,11 +792,12 @@ body {
   font-size: 14px;
 }
 .modal-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 10px;
 }
 .modal-actions .btn {
-  flex: 1;
+  width: 100%;
 }
 .modal-stats {
   display: flex;

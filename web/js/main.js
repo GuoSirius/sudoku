@@ -644,6 +644,7 @@ function showWinModal(rec) {
     body,
     actions: [
       { label: '查看复盘', ghost: true, onClick: () => { closeModal(); openReplay(rec); } },
+      { label: '查看排行榜', ghost: true, onClick: () => { closeModal(); showScreen('leaderboard'); } },
       { label: '再来一局', primary: true, onClick: () => newGameFlow() },
     ],
   });
@@ -1058,6 +1059,7 @@ function init() {
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
   $('btn-mini').onclick = openMiniWindow;
+  $('btn-settings-mini').onclick = openMiniWindow;
 
   $('rp-first').onclick = () => {
     stopReplay();

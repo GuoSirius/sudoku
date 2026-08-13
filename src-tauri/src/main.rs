@@ -71,6 +71,29 @@ fn main() {
                 .register(Shortcut::new(Some(Modifiers::ALT), Code::KeyS))
                 .unwrap();
 
+            // Release 构建时优先加载线上地址，无网或失败则回退到打包的本地资源
+            #[cfg(not(debug_assertions))]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                let online_url = "https://sudoku-3ss.pages.dev".to_string();
+                tauri::async_runtime::spawn(async move {
+                    let reachable = tauri::async_runtime::spawn_blocking(move || {
+                        ureq::get(&online_url)
+                            .timeout(std::time::Duration::from_secs(3))
+                            .call()
+                            .map(|r| r.status() == 200)
+                            .unwrap_or(false)
+                    })
+                    .await
+                    .unwrap_or(false);
+                    if reachable {
+                        if let Ok(url) = online_url.parse() {
+                            let _ = window.navigate(url);
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
