@@ -5,7 +5,7 @@
   "identifier": "cn.sudoku.game",
   "build": {
     "frontendDist": "../web",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:8137",
     "beforeDevCommand": "cd .. && npm run dev",
     "beforeBuildCommand": ""
   },

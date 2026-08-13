@@ -12,6 +12,10 @@
 
 - 临时停用 deploy.yml（Cloudflare 已直连 GitHub 仓库，推送即自动更新；重启用 `git mv` 改回 `.yml`）([928a309])
 
+### Documentation
+
+- README 全面重写以对齐全项目：补齐云同步/全球榜/桌面端 Tauri/安卓 App/自动更新/老板键，修正目录结构与「数据不上传」过时描述，补充构建发布与 `npm run release` 流程；修正本地端口 8137；同步 tauri.conf.json devUrl 与 serve.mjs 一致 ([398158f 后续])
+
 ## [1.0.5] - 2026-08-13
 
 ### Bug Fixes
