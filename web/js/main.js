@@ -445,10 +445,12 @@ function useHint() {
 // 手动「检查」：按需揭示错误并计错（游戏中零自动泄题，想核对时再核对）
 function doCheck() {
   if (!game || game.status !== 'playing') return;
-  const added = game.revealWrong();
+  game.revealWrong(); // 累计揭示（计错 + 持续标红）
   saveCurrent();
   renderGame();
-  toast(added > 0 ? `发现 ${added} 处错误` : '没有发现错误');
+  // 反馈当前盘面错误总数（非本次新增），避免二次检查误报“没问题”
+  const total = game.currentWrongCount();
+  toast(total > 0 ? `发现 ${total} 处错误` : '没有发现错误');
 }
 function toggleNotes() {
   noteMode = !noteMode;
@@ -956,6 +958,21 @@ function renderPersonalStats(lb, history) {
   return wrap;
 }
 
+// 排行榜行卡片：移动端友好。排名徽标 + 主信息(名称/难度 + 次级指标) + 主指标，flex 自适应。
+// 比 <table> 在窄屏更不易错乱拥挤。
+function lbRow({ rank, nameHtml, tagHtml = '', metaHtml, primaryLabel, primaryVal, top = false }) {
+  const row = document.createElement('div');
+  row.className = 'lb-row' + (top ? ' top' : '');
+  row.innerHTML = `
+    <div class="lb-rank ${top ? 'top' : ''}">${rank}</div>
+    <div class="lb-main">
+      <div class="lb-name">${nameHtml}${tagHtml}</div>
+      <div class="lb-meta">${metaHtml}</div>
+    </div>
+    <div class="lb-primary"><span class="lb-primary-label">${primaryLabel}</span><b>${primaryVal}</b></div>`;
+  return row;
+}
+
 async function renderLeaderboard() {
   // 排名维度切换
   const tabs = $('lb-tabs');
@@ -1018,24 +1035,25 @@ async function renderLeaderboard() {
     const title = document.createElement('h3');
     title.textContent = '全球榜 · ' + (lbGlobalDiff ? (DIFFICULTIES.find((x) => x.id === lbGlobalDiff) || {}).label || lbGlobalDiff : '全难度综合');
     sec.appendChild(title);
-    const table = document.createElement('table');
-    table.className = 'lb-table';
-    table.innerHTML = '<thead><tr><th>#</th><th>玩家</th><th>难度</th><th>综合分</th><th>用时</th><th>错误</th><th>提示</th></tr></thead>';
-    const tb = document.createElement('tbody');
+    const listEl = document.createElement('div');
+    listEl.className = 'lb-list';
     list.forEach((r, i) => {
       const d = DIFFICULTIES.find((x) => x.id === r.difficulty) || {};
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
-        <td class="lb-nick">${escapeHtml(r.nickname || '匿名玩家')}</td>
-        <td><span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span></td>
-        <td><b>${r.score}</b></td>
-        <td>${formatTime(r.duration_ms)}</td>
-        <td>${r.mistakes || 0}</td>
-        <td>${r.hints_used || 0}</td>`;
-      tb.appendChild(tr);
+      const tagHtml = `<span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span>`;
+      const metaHtml = `用时 ${formatTime(r.duration_ms)} · 错误 ${r.mistakes || 0} · 提示 ${r.hints_used || 0}`;
+      listEl.appendChild(
+        lbRow({
+          rank: i + 1,
+          nameHtml: `<span class="lb-nick-text">${escapeHtml(r.nickname || '匿名玩家')}</span>`,
+          tagHtml,
+          metaHtml,
+          primaryLabel: '综合分',
+          primaryVal: r.score,
+          top: i === 0,
+        })
+      );
     });
-    table.appendChild(tb);
-    sec.appendChild(table);
+    sec.appendChild(listEl);
     body.appendChild(sec);
     return;
   }
@@ -1058,22 +1076,22 @@ async function renderLeaderboard() {
       const sec = document.createElement('div');
       sec.className = 'lb-section';
       sec.innerHTML = `<h3><span class="tag d-${d.id}">${d.label}</span> 最佳成绩</h3>`;
-      const table = document.createElement('table');
-      table.className = 'lb-table';
-      table.innerHTML =
-        '<thead><tr><th>#</th><th>用时</th><th>错误</th><th>提示</th><th>日期</th></tr></thead>';
-      const tb = document.createElement('tbody');
+      const listEl = document.createElement('div');
+      listEl.className = 'lb-list';
       rows.forEach((r, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
-          <td>${formatTime(r.durationMs)}</td>
-          <td>${r.mistakes}</td>
-          <td>${r.hintsUsed || 0}</td>
-          <td>${new Date(r.date).toLocaleDateString('zh-CN')}</td>`;
-        tb.appendChild(tr);
+        const metaHtml = `错误 ${r.mistakes} · 提示 ${r.hintsUsed || 0} · ${new Date(r.date).toLocaleDateString('zh-CN')}`;
+        listEl.appendChild(
+          lbRow({
+            rank: i + 1,
+            nameHtml: `<span class="lb-nick-text">完成记录</span>`,
+            metaHtml,
+            primaryLabel: '用时',
+            primaryVal: formatTime(r.durationMs),
+            top: i === 0,
+          })
+        );
       });
-      table.appendChild(tb);
-      sec.appendChild(table);
+      sec.appendChild(listEl);
       body.appendChild(sec);
     });
     return;
@@ -1093,25 +1111,26 @@ async function renderLeaderboard() {
   const sec = document.createElement('div');
   sec.className = 'lb-section';
   sec.innerHTML = `<h3>${label}榜 · 全部难度综合排名</h3>`;
-  const table = document.createElement('table');
-  table.className = 'lb-table';
-  table.innerHTML = `<thead><tr><th>#</th><th>难度</th><th>${label}</th><th>用时</th><th>错误</th><th>提示</th><th>日期</th></tr></thead>`;
-  const tb = document.createElement('tbody');
+  const listEl = document.createElement('div');
+  listEl.className = 'lb-list';
   scored.forEach((s, i) => {
     const r = s.rec;
     const d = DIFFICULTIES.find((x) => x.id === r.difficulty) || {};
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
-      <td><span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span></td>
-      <td><b>${isScore ? s.diff : s.comp}</b></td>
-      <td>${formatTime(r.durationMs)}</td>
-      <td>${r.mistakes}</td>
-      <td>${r.hintsUsed || 0}</td>
-      <td>${new Date(r.date).toLocaleDateString('zh-CN')}</td>`;
-    tb.appendChild(tr);
+    const tagHtml = `<span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span>`;
+    const metaHtml = `用时 ${formatTime(r.durationMs)} · 错误 ${r.mistakes} · 提示 ${r.hintsUsed || 0} · ${new Date(r.date).toLocaleDateString('zh-CN')}`;
+    listEl.appendChild(
+      lbRow({
+        rank: i + 1,
+        nameHtml: `<span class="lb-nick-text">完成记录</span>`,
+        tagHtml,
+        metaHtml,
+        primaryLabel: label,
+        primaryVal: isScore ? s.diff : s.comp,
+        top: i === 0,
+      })
+    );
   });
-  table.appendChild(tb);
-  sec.appendChild(table);
+  sec.appendChild(listEl);
   body.appendChild(sec);
 }
 

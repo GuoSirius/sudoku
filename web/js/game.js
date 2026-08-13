@@ -96,6 +96,18 @@ export class Game {
     return findConflicts(this.cells);
   }
 
+  // 当前盘面上仍未修正的错误总数（已填、非题目给定、与答案不符）。
+  // 用于「检查」反馈：任意时刻的真实错误数，而非「自上次检查以来新增」，
+  // 否则第二次检查会误报“没问题”（revealedWrong 已装满导致新增为 0）。
+  // 注：同行/列/宫的重复（冲突）必然包含至少一个非给定的错格，故计入此处。
+  currentWrongCount() {
+    let n = 0;
+    for (let i = 0; i < 81; i++) {
+      if (!this.isGiven(i) && this.cells[i] !== 0 && this.cells[i] !== this.solution[i]) n++;
+    }
+    return n;
+  }
+
   // 手动「检查」：揭示当前所有填错的格子并计入错误数（每个错误格只计一次）
   // 返回本次新揭示的错误数
   revealWrong() {
