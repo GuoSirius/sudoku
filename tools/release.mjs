@@ -26,14 +26,52 @@ function bumpVersion(version, level) {
   return `${major}.${minor}.${patch + 1}`;
 }
 
+// 全局复用的 readline 接口 + 行队列：避免「每次提问新建/关闭接口」导致 stdin 暂停、
+// 以及缓冲输入在下一题监听器注册前被丢弃而中断流程的问题。
+let _rl = null;
+let _lineQueue = [];
+let _lineWaiter = null;
+
+function ensureRl() {
+  if (_rl) return _rl;
+  _rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  _rl.on('line', (l) => {
+    if (_lineWaiter) {
+      const w = _lineWaiter;
+      _lineWaiter = null;
+      w(l);
+    } else {
+      _lineQueue.push(l);
+    }
+  });
+  // stdin 结束（EOF / 管道关闭）时，若仍在等待输入则放行，避免静默挂起
+  _rl.on('close', () => {
+    if (_lineWaiter) {
+      const w = _lineWaiter;
+      _lineWaiter = null;
+      w('');
+    }
+  });
+  return _rl;
+}
+
 function question(q) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) =>
-    rl.question(q, (ans) => {
-      rl.close();
-      resolve(ans);
-    })
-  );
+  ensureRl();
+  process.stdout.write(q);
+  return new Promise((resolve) => {
+    if (_lineQueue.length) {
+      resolve(_lineQueue.shift());
+    } else {
+      _lineWaiter = resolve;
+    }
+  });
+}
+
+function closeRl() {
+  if (_rl) {
+    _rl.close();
+    _rl = null;
+  }
 }
 
 async function promptCommit() {
@@ -57,48 +95,19 @@ async function selectVersion(current) {
     { label: 'minor', next: bumpVersion(current, 'minor') },
     { label: 'major', next: bumpVersion(current, 'major') },
   ];
-  let idx = 0;
-
-  return new Promise((resolve, reject) => {
-    const draw = () => {
-      console.log('\x1b[2J\x1b[0;0H'); // 清屏
-      console.log(`当前版本：${current}`);
-      console.log('请选择发布类型（↑↓ 切换，Enter 确认，Esc/q 取消）：\n');
-      options.forEach((o, i) => {
-        const marker = i === idx ? '> ' : '  ';
-        console.log(`${marker}${o.label.padEnd(6)} ${current} → ${o.next}`);
-      });
-    };
-
-    const cleanup = () => {
-      process.stdin.removeListener('keypress', onKey);
-      process.stdin.setRawMode(false);
-      console.log('');
-    };
-
-    const onKey = (str, key) => {
-      if (!key) return;
-      if (key.name === 'up') {
-        idx = (idx - 1 + options.length) % options.length;
-      } else if (key.name === 'down') {
-        idx = (idx + 1) % options.length;
-      } else if (key.name === 'return') {
-        cleanup();
-        resolve(options[idx].label);
-        return;
-      } else if (key.name === 'escape' || key.name === 'q') {
-        cleanup();
-        reject(new Error('用户取消了发布'));
-        return;
-      }
-      draw();
-    };
-
-    process.stdin.setRawMode(true);
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.on('keypress', onKey);
-    draw();
+  console.log(`\n当前版本：${current}`);
+  console.log('请选择发布类型：');
+  options.forEach((o, i) => {
+    console.log(`  ${i + 1}) ${o.label.padEnd(6)} ${current} → ${o.next}`);
   });
+  const ans = (await question('输入 1/2/3 或 patch/minor/major（直接回车默认 patch）：'))
+    .trim()
+    .toLowerCase();
+  if (ans === '' || ans === '1' || ans === 'patch') return 'patch';
+  if (ans === '2' || ans === 'minor') return 'minor';
+  if (ans === '3' || ans === 'major') return 'major';
+  console.log('⚠️ 无效输入，默认使用 patch。');
+  return 'patch';
 }
 
 async function confirmRelease(version) {
@@ -216,42 +225,46 @@ async function appendChangelog(version) {
 }
 
 async function main() {
-  console.log('=== 数独 Sudoku 交互式发布 ===\n');
+  try {
+    console.log('=== 数独 Sudoku 交互式发布 ===\n');
 
-  console.log('① 运行自测...\n');
-  run('npm test');
+    console.log('① 运行自测...\n');
+    run('npm test');
 
-  await promptCommit();
+    await promptCommit();
 
-  const pkg = await readPkg();
-  const current = pkg.version;
-  const level = await selectVersion(current);
+    const pkg = await readPkg();
+    const current = pkg.version;
+    const level = await selectVersion(current);
 
-  console.log(`\n② bump 版本号（${level}）...`);
-  run(`npm version ${level} --no-git-tag-version`);
-  const { version } = await readPkg();
+    console.log(`\n② bump 版本号（${level}）...`);
+    run(`npm version ${level} --no-git-tag-version`);
+    const { version } = await readPkg();
 
-  console.log('\n③ 同步版本号到各端...');
-  run('node tools/sync-version.mjs');
+    console.log('\n③ 同步版本号到各端...');
+    run('node tools/sync-version.mjs');
 
-  console.log(`\n④ 生成 v${version} 的 changelog...`);
-  const section = await appendChangelog(version);
-  console.log('\n--- 本次 changelog ---');
-  console.log(section);
-  console.log('----------------------\n');
+    console.log(`\n④ 生成 v${version} 的 changelog...`);
+    const section = await appendChangelog(version);
+    console.log('\n--- 本次 changelog ---');
+    console.log(section);
+    console.log('----------------------\n');
 
-  if (!(await confirmRelease(version))) {
-    console.log('已取消发布。');
-    process.exit(0);
+    if (!(await confirmRelease(version))) {
+      console.log('已取消发布。');
+      return;
+    }
+
+    console.log('\n⑤ 提交、打 tag、推送...');
+    run('git add -A');
+    run(`git commit -m "chore(release): v${version}"`);
+    run(`git tag -a "v${version}" -m "v${version}"`);
+    run('git push origin HEAD --follow-tags');
+
+    console.log(`\n✓ 已发布 v${version} 并推送到 origin。`);
+  } finally {
+    closeRl();
   }
-
-  console.log('\n⑤ 提交、打 tag、推送...');
-  run('git add -A');
-  run(`git commit -m "chore(release): v${version}"`);
-  run(`git tag -a "v${version}" -m "v${version}"`);
-  run('git push origin HEAD --follow-tags');
-
-  console.log(`\n✓ 已发布 v${version} 并推送到 origin。`);
 }
 
 main().catch((e) => {
