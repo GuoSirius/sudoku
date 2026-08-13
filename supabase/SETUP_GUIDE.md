@@ -92,7 +92,12 @@ Supabase 新版控制台把 API key 入口改成了 **Settings → API Keys**，
    - **anon key**：很长的字符串，以 `eyJ...` 开头 → 复制备用
 5. 把这两样**发给我**（直接贴聊天里即可）。**Publishable / anon key 是公开安全的**，可以放在前端代码里，不用担心泄露（真正敏感的操作由后台的 RLS 行级安全控制）。
 
-> 你截图里看到的 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` 就是新版 Publishable key，复制等号后面那一串给我即可。
+> **还看不懂这两个值从哪拿？** 你截图里那段环境变量就是答案：
+> - `NEXT_PUBLIC_SUPABASE_URL=https://oafefnbyzajzdejelhsw.supabase.co` —— **等号后面整串就是 Project URL**，直接发我即可。
+> - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` —— **等号后面 `sb_publishable_...` 那串就是 Publishable key**。
+> - 中间 `oafefnbyzajzdejelhsw` 这一段叫 **project ref（项目代号）**，后面配 GitHub 回调地址会用到。
+
+> 你**不需要**自己 `npm install @supabase/supabase-js`——那是给 Next.js 项目用的。我们这个纯静态 PWA 会由我在代码里通过 CDN 引入库，你只负责把上面两项配置发我。
 
 ---
 
@@ -151,7 +156,7 @@ create policy "user_data_own_row" on public.user_data
      ```
      https://<你的project-ref>.supabase.co/auth/v1/callback
      ```
-     `<你的project-ref>` 就是第 2 步 Project URL 里 `https://` 和 `.supabase.co` 之间的那段（即 `abcd1234`）。
+     `<你的project-ref>` 就是第 2 步 Project URL 里 `https://` 和 `.supabase.co` 之间的那段（即 `abcd1234`）。**举例**：你的 Project URL 是 `https://oafefnbyzajzdejelhsw.supabase.co`，那回调地址就是 `https://oafefnbyzajzdejelhsw.supabase.co/auth/v1/callback`。这个地址是 Supabase 固定格式，不需要你「去哪拿」，照着填就行。
 4. 点 **Register application**
 5. 进入应用页后：
    - **Client ID** 直接显示，复制备用；
