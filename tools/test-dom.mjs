@@ -153,6 +153,13 @@ const tick = () => new Promise((r) => setTimeout(r, 420));
 await import('../web/js/main.js');
 assert(true, 'init 无异常');
 
+// 摸鱼小窗用 window.open 弹独立窗口；测试里打桩统计调用次数（默认 window 无 open）
+let windowOpenCalls = 0;
+globalThis.window.open = (...a) => {
+  windowOpenCalls++;
+  return {};
+};
+
 // 刷新恢复：预置停留在历史页，应恢复历史页而非首页
 assert(
   !elements['screen-history'].classList.contains('hidden') &&
@@ -460,6 +467,23 @@ elements['btn-settings'].click();
 assert(elements['set-difficulty'].children.length === 4, '设置页渲染难度分段（4 档）');
 assert(elements['set-mistake'].children.length === 3, '设置页渲染错误提示分段（3 档）');
 elements['btn-settings-back'].click();
+
+// 摸鱼小窗：点按钮先弹二次确认，确认后才打开独立窗口（避免误触弹窗）
+elements['btn-mini'].click();
+assert(elements['modal-root'].classList.contains('show'), '点「摸鱼小窗」弹出二次确认框');
+assert(windowOpenCalls === 0, '未确认前不打开独立窗口（无弹窗误触）');
+const openMiniBtn = findByText(elements['modal-root'], '打开小窗');
+assert(!!openMiniBtn, '确认框含「打开小窗」按钮');
+openMiniBtn.click(); // 关闭弹框 + openMiniWindow()
+assert(windowOpenCalls === 1, '点「打开小窗」后才真正打开独立窗口');
+assert(!elements['modal-root'].classList.contains('show'), '确认后弹窗关闭');
+// 取消路径：再来一次，点「取消」不应打开窗口
+elements['btn-mini'].click();
+const cancelMiniBtn = findByText(elements['modal-root'], '取消');
+assert(!!cancelMiniBtn, '确认框含「取消」按钮');
+cancelMiniBtn.click();
+assert(windowOpenCalls === 1, '点「取消」不打开独立窗口（调用次数仍为 1）');
+assert(!elements['modal-root'].classList.contains('show'), '取消后弹窗关闭');
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);
