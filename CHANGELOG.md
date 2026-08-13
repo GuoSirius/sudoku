@@ -2,6 +2,14 @@
 
 所有版本的变更都按时间倒序记录于此，每个版本下按提交类型分组展示。
 
+## [1.0.5] - 2026-08-13
+
+### Bug Fixes
+
+- **ci:** Tauri 产物上传路径兼容 target triple（** 通配），修复 if-no-files-found 失败 ([b4e81bc])
+- 恢复 SAFE_DEFAULT_AGP=8.13.2 修复 CI Android 构建；release 版本选择改回箭头上下切换 ([aa39838])
+- release 脚本改用单一持久 readline 接口+行队列，修复提交后中断退出的问题 ([d6ad520])
+
 ## [1.0.4] - 2026-08-13
 
 ### Bug Fixes

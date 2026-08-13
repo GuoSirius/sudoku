@@ -1,6 +1,6 @@
 {
   "name": "sudoku-app",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "type": "module",
   "description": "数独 App（Capacitor 封装，安卓/iOS）",
