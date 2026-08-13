@@ -958,7 +958,7 @@ body.mini .game-actions .btn {
   padding: 8px 0;
 }
 
-/* ============ 老板键：一键伪装成「在工作」 ============ */
+/* ============ 老板键：一键伪装成「在写代码」 ============ */
 #boss-screen {
   display: none;
   position: fixed;
@@ -967,13 +967,75 @@ body.mini .game-actions .btn {
   background: #1e1e1e;
   color: #d4d4d4;
   font-family: "SF Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
-  flex-direction: column;
+  flex-direction: row;
 }
 body.boss #app {
   display: none;
 }
 body.boss #boss-screen {
   display: flex;
+}
+/* 左侧文件树：让它更像真实 IDE，融入暗色不显眼 */
+.boss-side {
+  width: 168px;
+  flex: 0 0 auto;
+  background: #252526;
+  border-right: 1px solid #1b1b1b;
+  padding: 8px 0;
+  font-size: 12px;
+  color: #cccccc;
+  overflow: auto;
+}
+.boss-side-h {
+  padding: 4px 14px 8px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #8a8a8a;
+}
+.boss-tree,
+.boss-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.boss-tree ul {
+  padding-left: 14px;
+}
+.boss-folder {
+  display: block;
+  padding: 3px 10px;
+  color: #cccccc;
+  white-space: nowrap;
+}
+.boss-file-i {
+  position: relative;
+  padding: 3px 10px 3px 24px;
+  color: #b5b5b5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.boss-file-i::before {
+  content: "○";
+  position: absolute;
+  left: 9px;
+  color: #6a6a6a;
+  font-size: 10px;
+}
+.boss-file-i.boss-active {
+  background: #37373d;
+  color: #ffffff;
+}
+.boss-file-i.boss-active::before {
+  content: "●";
+  color: #ffffff;
+}
+.boss-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 .boss-bar {
   display: flex;
@@ -1021,6 +1083,18 @@ body.boss #boss-screen {
 }
 .boss-code .st {
   color: #ce9178;
+}
+.boss-code .fn {
+  color: #dcdcaa;
+}
+.boss-code .num {
+  color: #b5cea8;
+}
+.boss-code .tag {
+  color: #4ec9b0;
+}
+.boss-code .at {
+  color: #c586c0;
 }
 .boss-cursor {
   display: inline-block;

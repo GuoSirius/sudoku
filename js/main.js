@@ -48,7 +48,96 @@ function openMiniWindow() {
 }
 
 // 老板键：在游戏与「伪装工作界面」之间瞬间切换
+// 伪装成哪种开发可在「设置 → 摸鱼伪装」里选，画面会跟随技术栈渲染对应代码
+const BOSS_LANGS = {
+  frontend: {
+    file: 'Dashboard.tsx',
+    html:
+      `<span class="kw">import</span> { useState, useEffect } <span class="kw">from</span> <span class="st">'react'</span>;\n` +
+      `<span class="kw">import</span> { fetchOrders } <span class="kw">from</span> <span class="st">'@/api/orders'</span>;\n\n` +
+      `<span class="kw">export default function</span> <span class="fn">Dashboard</span>() {\n` +
+      `  <span class="kw">const</span> [orders, setOrders] = <span class="fn">useState</span>([]);\n` +
+      `  <span class="kw">const</span> [loading, setLoading] = <span class="fn">useState</span>(<span class="kw">true</span>);\n\n` +
+      `  <span class="fn">useEffect</span>(() =&gt; {\n` +
+      `    <span class="fn">fetchOrders</span>().<span class="fn">then</span>((res) =&gt; {\n` +
+      `      setOrders(res.data);\n` +
+      `      setLoading(<span class="kw">false</span>);\n` +
+      `    });\n` +
+      `  }, []);\n\n` +
+      `  <span class="kw">return</span> (\n` +
+      `    <span class="tag">&lt;section</span> <span class="at">className</span>=<span class="st">"panel"</span><span class="tag">&gt;</span>\n` +
+      `      <span class="tag">&lt;h2&gt;</span>订单概览<span class="tag">&lt;/h2&gt;</span>\n` +
+      `      {loading ? <span class="tag">&lt;Spinner</span> <span class="tag">/&gt;</span> : <span class="tag">&lt;Table</span> <span class="at">rows</span>={orders} <span class="tag">/&gt;</span>}\n` +
+      `    <span class="tag">&lt;/section&gt;</span>\n` +
+      `  );\n` +
+      `}`,
+  },
+  php: {
+    file: 'api.php',
+    html:
+      `<span class="tag">&lt;?php</span>\n` +
+      `<span class="kw">require_once</span> <span class="st">'../bootstrap.php'</span>;\n\n` +
+      `<span class="kw">use</span> App\\Service\\OrderService;\n\n` +
+      `<span class="fn">$service</span> = <span class="kw">new</span> <span class="fn">OrderService</span>();\n` +
+      `<span class="fn">$page</span> = <span class="fn">$_GET</span>[<span class="st">'page'</span>] ?? <span class="num">1</span>;\n` +
+      `<span class="fn">$list</span> = <span class="fn">$service</span>-&gt;<span class="fn">paginate</span>(<span class="fn">$page</span>, <span class="num">20</span>);\n\n` +
+      `<span class="kw">header</span>(<span class="st">'Content-Type: application/json'</span>);\n` +
+      `<span class="kw">echo</span> <span class="fn">json_encode</span>([\n` +
+      `  <span class="st">'total'</span> =&gt; <span class="fn">$list</span>-&gt;total,\n` +
+      `  <span class="st">'items'</span> =&gt; <span class="fn">$list</span>-&gt;items,\n` +
+      `]);\n\n` +
+      `<span class="cm">// TODO: 加一层缓存，降低数据库压力</span>`,
+  },
+  java: {
+    file: 'ReportService.java',
+    html:
+      `<span class="kw">package</span> com.acme.report;\n\n` +
+      `<span class="kw">import</span> java.util.List;\n` +
+      `<span class="kw">import</span> org.springframework.stereotype.Service;\n\n` +
+      `<span class="kw">@Service</span>\n` +
+      `<span class="kw">public class</span> <span class="fn">ReportService</span> {\n` +
+      `  <span class="kw">private final</span> OrderRepository repo;\n\n` +
+      `  <span class="kw">public</span> <span class="fn">ReportService</span>(OrderRepository repo) {\n` +
+      `    <span class="kw">this</span>.repo = repo;\n` +
+      `  }\n\n` +
+      `  <span class="kw">public</span> Report <span class="fn">build</span>(String quarter) {\n` +
+      `    List&lt;Order&gt; orders = repo.<span class="fn">findByQuarter</span>(quarter);\n` +
+      `    <span class="kw">double</span> total = orders.<span class="fn">stream</span>()\n` +
+      `        .<span class="fn">mapToDouble</span>(Order::getAmount)\n` +
+      `        .<span class="fn">sum</span>();\n` +
+      `    <span class="kw">return new</span> <span class="fn">Report</span>(quarter, total, orders.<span class="fn">size</span>());\n` +
+      `  }\n` +
+      `}`,
+  },
+  python: {
+    file: 'analysis.py',
+    html:
+      `<span class="kw">import</span> pandas <span class="kw">as</span> pd\n` +
+      `<span class="kw">from</span> datetime <span class="kw">import</span> date\n\n` +
+      `df = pd.<span class="fn">read_csv</span>(<span class="st">"sales_q3.csv"</span>)\n` +
+      `df[<span class="st">"month"</span>] = pd.to_datetime(df[<span class="st">"date"</span>]).dt.month\n` +
+      `pivot = df.<span class="fn">pivot_table</span>(index=<span class="st">"region"</span>, values=<span class="st">"amount"</span>, aggfunc=<span class="st">"sum"</span>)\n\n` +
+      `<span class="cm"># 按金额降序取 Top 10 区域</span>\n` +
+      `top = pivot.<span class="fn">sort_values</span>(<span class="st">"amount"</span>, ascending=<span class="kw">False</span>).<span class="fn">head</span>(<span class="num">10</span>)\n` +
+      `<span class="kw">print</span>(top)\n\n` +
+      `<span class="cm"># TODO: 核对 9 月异常波动，下周例会同步</span>`,
+  },
+};
+function renderBoss() {
+  const lang = (storage.getSettings().bossLang || 'frontend');
+  const c = BOSS_LANGS[lang] || BOSS_LANGS.frontend;
+  const code = document.querySelector('#boss-screen .boss-code code');
+  const file = document.querySelector('#boss-screen .boss-file');
+  if (code) code.innerHTML = c.html + '<span class="boss-cursor"></span>';
+  if (file) file.textContent = c.file;
+  const items = document.querySelectorAll('#boss-screen .boss-file-i');
+  items.forEach((el) => {
+    el.classList.toggle('boss-active', el.dataset.lang === lang);
+  });
+}
 function toggleBoss() {
+  const turningOn = !document.body.classList.contains('boss');
+  if (turningOn) renderBoss();
   document.body.classList.toggle('boss');
 }
 
@@ -837,7 +926,29 @@ function renderSettings() {
         if (game) renderGame(); // 立即反映高亮变化
         toast('错误提示：' + label);
       };
-      mwrap.appendChild(b);
+        mwrap.appendChild(b);
+    });
+  }
+  // 摸鱼伪装语言：前端 / PHP / Java / Python
+  const bwrap = $('set-bosslang');
+  if (bwrap) {
+    bwrap.innerHTML = '';
+    [
+      ['frontend', '前端'],
+      ['php', 'PHP'],
+      ['java', 'Java'],
+      ['python', 'Python'],
+    ].forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (v === (s.bossLang || 'frontend') ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        storage.setSettings({ bossLang: v });
+        renderBoss();
+        renderSettings();
+        toast('摸鱼伪装：' + label);
+      };
+      bwrap.appendChild(b);
     });
   }
 }
