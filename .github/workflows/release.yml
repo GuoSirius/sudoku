@@ -108,11 +108,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows
+          # 显式 --target x86_64-pc-windows-msvc 会让 Cargo 产物落在 target/<triple>/release 而非 target/release，
+          # 故用 ** 通配 target triple，避免「找不到文件」导致 if-no-files-found:error 失败。
           path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/*.zip
-            src-tauri/target/release/bundle/*.sig
-            src-tauri/target/release/sudoku.exe
+            src-tauri/target/**/release/bundle/nsis/*.exe
+            src-tauri/target/**/release/bundle/*.zip
+            src-tauri/target/**/release/bundle/*.sig
+            src-tauri/target/**/release/sudoku.exe
           if-no-files-found: error
 
   # 3) 构建 Android Debug APK（如需发布签名版，请补充签名 secrets）
