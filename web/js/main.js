@@ -200,7 +200,7 @@ function restoreScreen() {
 }
 
 // ---------------- 弹窗 / Toast ----------------
-function showModal({ title, body, actions = [], dismissable = true, actionsClass = '' }) {
+function showModal({ title, body, actions = [], dismissable = true, actionsClass = '', onClose = null }) {
   const root = $('modal-root');
   root.innerHTML = '';
   const m = document.createElement('div');
@@ -215,7 +215,7 @@ function showModal({ title, body, actions = [], dismissable = true, actionsClass
   xBtn.type = 'button';
   xBtn.className = 'modal-close';
   xBtn.textContent = '×';
-  xBtn.onclick = () => closeModal();
+  xBtn.onclick = () => (onClose ? onClose() : closeModal());
   head.appendChild(xBtn);
   m.appendChild(head);
   if (typeof body === 'string') {
@@ -654,6 +654,8 @@ function showWinModal(rec) {
     title: isNewBest(rec) ? '🎉 新纪录！' : '恭喜完成',
     body,
     actionsClass: 'win-actions',
+    // 点右上角 × 关闭时，默认跳转到排行榜
+    onClose: () => { closeModal(); showScreen('leaderboard'); },
     actions: [
       { label: '再来一局', primary: true, onClick: () => newGameFlow() },
       { label: '查看复盘', ghost: true, onClick: () => { closeModal(); openReplay(rec); } },
