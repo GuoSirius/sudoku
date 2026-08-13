@@ -125,6 +125,10 @@ jobs:
         working-directory: ./app
         run: npx cap sync
 
+      # 安装编译所需的 Android SDK platform 与 build-tools（compileSdk = 36）
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Build debug APK
         working-directory: ./app/android
         run: ./gradlew assembleDebug
