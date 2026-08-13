@@ -649,6 +649,9 @@ body {
 }
 
 /* 排行榜 */
+.lb-tabs {
+  margin-bottom: 14px;
+}
 .lb-section {
   margin-bottom: 18px;
 }

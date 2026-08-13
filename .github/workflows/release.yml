@@ -76,7 +76,6 @@ jobs:
         with:
           name: tauri-windows
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/*.zip
             src-tauri/target/release/bundle/*.sig
@@ -115,6 +114,12 @@ jobs:
       - name: Add Android platform
         working-directory: ./app
         run: npm run cap:add:android
+
+      # 先把仓库根目录的静态 PWA 资源同步到 app/www/（Capacitor 的 webDir），
+      # 否则 npx cap sync 会报 “Could not find the web assets directory: ./www”
+      - name: Sync web assets to www
+        working-directory: ./app
+        run: npm run sync
 
       - name: Sync web assets
         working-directory: ./app

@@ -849,7 +849,46 @@ function stopReplay() {
 }
 
 // ---------------- 排行榜 ----------------
+// 难度基础分：难度越高完成得分越高（与 DIFFICULTY_CLUES 反向对应：提示越少越难）
+const DIFF_SCORE = { easy: 100, medium: 200, hard: 350, expert: 500 };
+// 各难度“标准用时”（秒）：用于时间因子归一化，使不同难度的成绩可横向比较
+const DIFF_PAR = { easy: 240, medium: 480, hard: 720, expert: 960 };
+function difficultyScore(rec) {
+  return DIFF_SCORE[rec.difficulty] || 100;
+}
+// 综合分：难度分 × 时间因子 × 准确率因子，跨难度可比较（越快/越少错/越少提示越高）
+function compositeScore(rec) {
+  const base = difficultyScore(rec);
+  const durSec = Math.max(rec.durationMs / 1000, 1);
+  const par = DIFF_PAR[rec.difficulty] || 600;
+  const timeFactor = Math.min(1.6, Math.max(0.4, par / durSec));
+  const accuracyFactor = 1 / (1 + 0.05 * (rec.mistakes || 0) + 0.1 * (rec.hintsUsed || 0));
+  return Math.round(base * timeFactor * accuracyFactor);
+}
+
+let lbMode = 'fast'; // 'fast' 每难度最快 | 'score' 难度分 | 'composite' 综合分
+
 function renderLeaderboard() {
+  // 排名维度切换
+  const tabs = $('lb-tabs');
+  if (tabs) {
+    tabs.innerHTML = '';
+    [
+      ['fast', '最快用时'],
+      ['score', '难度分'],
+      ['composite', '综合分'],
+    ].forEach(([m, label]) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (m === lbMode ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        lbMode = m;
+        renderLeaderboard();
+      };
+      tabs.appendChild(b);
+    });
+  }
+
   const body = $('leaderboard-body');
   body.innerHTML = '';
   const lb = storage.getLeaderboard().filter((r) => r.won);
@@ -857,33 +896,73 @@ function renderLeaderboard() {
     body.innerHTML = '<div class="empty">还没有完成的对局，加油！</div>';
     return;
   }
-  DIFFICULTIES.forEach((d) => {
-    const rows = lb
-      .filter((r) => r.difficulty === d.id)
-      .sort((a, b) => a.durationMs - b.durationMs)
-      .slice(0, 10);
-    if (!rows.length) return;
-    const sec = document.createElement('div');
-    sec.className = 'lb-section';
-    sec.innerHTML = `<h3><span class="tag d-${d.id}">${d.label}</span> 最佳成绩</h3>`;
-    const table = document.createElement('table');
-    table.className = 'lb-table';
-    table.innerHTML =
-      '<thead><tr><th>#</th><th>用时</th><th>错误</th><th>提示</th><th>日期</th></tr></thead>';
-    const tb = document.createElement('tbody');
-    rows.forEach((r, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
-        <td>${formatTime(r.durationMs)}</td>
-        <td>${r.mistakes}</td>
-        <td>${r.hintsUsed || 0}</td>
-        <td>${new Date(r.date).toLocaleDateString('zh-CN')}</td>`;
-      tb.appendChild(tr);
+
+  // 模式一：每难度最快用时 Top10（原行为）
+  if (lbMode === 'fast') {
+    DIFFICULTIES.forEach((d) => {
+      const rows = lb
+        .filter((r) => r.difficulty === d.id)
+        .sort((a, b) => a.durationMs - b.durationMs)
+        .slice(0, 10);
+      if (!rows.length) return;
+      const sec = document.createElement('div');
+      sec.className = 'lb-section';
+      sec.innerHTML = `<h3><span class="tag d-${d.id}">${d.label}</span> 最佳成绩</h3>`;
+      const table = document.createElement('table');
+      table.className = 'lb-table';
+      table.innerHTML =
+        '<thead><tr><th>#</th><th>用时</th><th>错误</th><th>提示</th><th>日期</th></tr></thead>';
+      const tb = document.createElement('tbody');
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
+          <td>${formatTime(r.durationMs)}</td>
+          <td>${r.mistakes}</td>
+          <td>${r.hintsUsed || 0}</td>
+          <td>${new Date(r.date).toLocaleDateString('zh-CN')}</td>`;
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb);
+      sec.appendChild(table);
+      body.appendChild(sec);
     });
-    table.appendChild(tb);
-    sec.appendChild(table);
-    body.appendChild(sec);
+    return;
+  }
+
+  // 模式二/三：难度分 / 综合分 —— 跨难度统一排名（全部人员综合排名）
+  const isScore = lbMode === 'score';
+  const scored = lb
+    .map((r) => ({ rec: r, diff: difficultyScore(r), comp: compositeScore(r) }))
+    .sort(
+      (a, b) =>
+        (isScore ? b.diff - a.diff : b.comp - a.comp) || a.rec.durationMs - b.rec.durationMs
+    )
+    .slice(0, 20);
+
+  const label = isScore ? '难度分' : '综合分';
+  const sec = document.createElement('div');
+  sec.className = 'lb-section';
+  sec.innerHTML = `<h3>${label}榜 · 全部难度综合排名</h3>`;
+  const table = document.createElement('table');
+  table.className = 'lb-table';
+  table.innerHTML = `<thead><tr><th>#</th><th>难度</th><th>${label}</th><th>用时</th><th>错误</th><th>提示</th><th>日期</th></tr></thead>`;
+  const tb = document.createElement('tbody');
+  scored.forEach((s, i) => {
+    const r = s.rec;
+    const d = DIFFICULTIES.find((x) => x.id === r.difficulty) || {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
+      <td><span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span></td>
+      <td><b>${isScore ? s.diff : s.comp}</b></td>
+      <td>${formatTime(r.durationMs)}</td>
+      <td>${r.mistakes}</td>
+      <td>${r.hintsUsed || 0}</td>
+      <td>${new Date(r.date).toLocaleDateString('zh-CN')}</td>`;
+    tb.appendChild(tr);
   });
+  table.appendChild(tb);
+  sec.appendChild(table);
+  body.appendChild(sec);
 }
 
 // ---------------- 设置 ----------------
