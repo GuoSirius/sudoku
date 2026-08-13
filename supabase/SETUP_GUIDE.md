@@ -2,7 +2,7 @@
 
 > 本文面向**第一次使用 Supabase** 的你。照着步骤一步步在网页上点即可，不需要写后端代码。
 >
-> **目标**：让你在 Supabase 上准备好「数据库 + 登录方式」，然后把 **Project URL** 和 **anon key** 发给我。我拿到后再写代码，把本地记录同步到云端，实现跨设备查看历史 / 复盘 / 排行榜。
+> **目标**：让你在 Supabase 上准备好「数据库 + 登录方式」，然后把 **Project URL** 和 **Publishable key（新版）/ anon key（旧版）** 发给我。我拿到后再写代码，把本地记录同步到云端，实现跨设备查看历史 / 复盘 / 排行榜。
 >
 > **登录方式建议**：**邮箱（魔法链接）为主 + GitHub 可选**。两者都能做、可同时开启；邮箱覆盖所有用户且几乎零配置，GitHub 作为可选加分项（详见下方「认证方式对比」一节）。
 >
@@ -45,7 +45,7 @@
 > - **邮箱**：覆盖所有用户、部署最简单，作为默认登录方式；
 > - **GitHub**：你若想顺手用（毕竟你有 GitHub 账号），就顺便开启作为可选入口，普通玩家不用管它。
 >
-> 这样你给我的东西也更少：**邮箱开箱即用，你只需提供 Project URL + anon key**；GitHub 是可选的加分项。
+> 这样你给我的东西也更少：**邮箱开箱即用，你只需提供 Project URL + Publishable key（新版）或 anon key（旧版）**；GitHub 是可选的加分项。
 
 ---
 
@@ -54,12 +54,14 @@
 你只需要在网页上点几步，**全程不用写代码**：
 
 1. 建一个 Supabase 项目
-2. 复制 **Project URL** + **anon key**（这两个发给我）
+2. 复制 **Project URL** + **Publishable key（新版）/ anon key（旧版）**（这两个发给我）
 3. 执行一段 SQL 建数据表（现成的，复制粘贴）
 4. （可选）在 GitHub 建一个 OAuth App，并在 Supabase 启用 GitHub 登录 —— **不加也行，邮箱登录默认就有**
 5. 把拿到的信息发给我
 
 > 邮箱登录 Supabase 默认已开启，**你什么都不用配**；GitHub 是可选的加分项。你**不需要**把 GitHub 的 Secret 发给我——那个只填在 Supabase 后台，前端代码用不到。
+>
+> 关于 API key：Supabase 新版控制台把旧的 **anon key** 改名为 **Publishable key**（以 `sb_publishable_` 开头），两者作用完全一样，复制哪一个给我都可以。如果你的项目只显示 Publishable key，就用它。
 
 ---
 
@@ -76,14 +78,21 @@
 
 ---
 
-## 2. 拿到 Project URL 和 anon key（这两个要发给我）
+## 2. 拿到 Project URL 和 Publishable/anon key（这两个要发给我）
+
+Supabase 新版控制台把 API key 入口改成了 **Settings → API Keys**，并且新增了 **Publishable key**（`sb_publishable_...`），它就是以前放在前端的 **anon key**。旧的 **anon key**（`eyJ...` 开头）如果没被替换，会放在 **Legacy API Keys** 标签页里。两种 key 都能用，复制你看到的那一个即可。
 
 1. 进入项目后，左侧菜单最底部 **Project Settings**（齿轮图标）
-2. 选 **API**
-3. 这一页你会看到：
+2. 选 **API Keys**（注意：不是旧的 API）
+3. 如果看到 **Publishable and secret API keys** 标签页：
    - **Project URL**：形如 `https://abcd1234.supabase.co` → 复制备用
-   - **Project API keys** 下方的 **anon** / **public** 那一行（很长的字符串，以 `eyJ...` 开头）→ 复制备用
-4. 把这两样**发给我**（直接贴聊天里即可）。**anon key 是公开安全的**，可以放在前端代码里，不用担心泄露（真正敏感的操作由后台的 RLS 行级安全控制）。
+   - **Publishable key**：形如 `sb_publishable_...` → 复制备用
+4. 如果没看到 Publishable key，切换到 **Legacy API Keys** 标签页：
+   - **Project URL**：同上
+   - **anon key**：很长的字符串，以 `eyJ...` 开头 → 复制备用
+5. 把这两样**发给我**（直接贴聊天里即可）。**Publishable / anon key 是公开安全的**，可以放在前端代码里，不用担心泄露（真正敏感的操作由后台的 RLS 行级安全控制）。
+
+> 你截图里看到的 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...` 就是新版 Publishable key，复制等号后面那一串给我即可。
 
 ---
 
@@ -175,7 +184,7 @@ create policy "user_data_own_row" on public.user_data
 请回复我「开始」并带上：
 
 - ✅ Supabase **Project URL**
-- ✅ Supabase **anon key**
+- ✅ Supabase **Publishable key（新版）或 anon key（旧版）**
 - ✅ 是否启用 GitHub 登录？（**邮箱默认就有，GitHub 是可选**）
   - 若启用：确认 GitHub OAuth App 已创建、Supabase 已启用 GitHub provider、回调 / 跳转地址已配置（**GitHub Client Secret 不必发我**，只填 Supabase 后台）
   - 若不启用：跳过即可，邮箱登录照常工作
@@ -183,7 +192,7 @@ create policy "user_data_own_row" on public.user_data
 收到后我会：
 
 1. 在 `feature/supabase-sync` 分支写代码（**不影响你现在能玩的主线**）；
-2. 在 `js/config.js` 填入你的 URL + anon key；
+2. 在 `js/config.js` 填入你的 URL + Publishable/anon key；
 3. 默认以**邮箱魔法链接**为主登录方式；若你启用 GitHub，登录页同时显示 GitHub 按钮（未启用则自动隐藏）；
 4. 新增登录 / 登出 UI 和云端同步逻辑（登录拉取、本地变动防抖回写、离线照常玩）；
 5. 跑通原有测试后，交你在浏览器里实测跨设备。
@@ -211,7 +220,7 @@ create policy "user_data_own_row" on public.user_data
 ## 8. 操作完成自检清单（都打勾后通知我「开始」）
 
 - [ ] Supabase 项目已创建（Free 层即可）
-- [ ] 已复制 **Project URL** 和 **anon key**
+- [ ] 已复制 **Project URL** 和 **Publishable key / anon key**
 - [ ] SQL Editor 执行了建表语句，显示 `Success`
 - [ ] （可选）GitHub OAuth App 已创建，拿到 Client ID / Secret
 - [ ] （可选）Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
