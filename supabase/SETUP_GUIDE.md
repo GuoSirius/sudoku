@@ -151,7 +151,7 @@ create policy "user_data_own_row" on public.user_data
 2. 点 **New OAuth App**
 3. 填写：
    - **Application name**：`Sudoku Sync`（随便）
-   - **Homepage URL**：现在先填 `http://localhost:5173`（本地调试用；以后部署了改成你的网站地址）
+   - **Homepage URL**：填你的网站地址，例如 `https://sudoku-3ss.pages.dev`（本地调试也可以填 `http://localhost:5173`，但线上用户用的是部署地址，建议直接填部署域名）
    - **Authorization callback URL（回调地址）**：填
      ```
      https://<你的project-ref>.supabase.co/auth/v1/callback
@@ -173,11 +173,15 @@ create policy "user_data_own_row" on public.user_data
 
 ### 4.3 配置跳转（Redirect）地址
 
+> **localhost 和线上地址的区别**：`localhost:5173` 只代表你**本机跑开发服务器**时的地址；`https://sudoku-3ss.pages.dev` 是你 Cloudflare Pages 上的**真实线上地址**。邮箱魔法链接 / GitHub 授权完成后，Supabase 会把用户跳回「在 Site URL / Redirect URLs 里、且与实际打开网站的地址一致」的那一个。所以**线上用户从哪个地址打开游戏，哪个地址就必须加进 Redirect URLs**，否则会报 redirect 错误。
+>
+> 结论：**如果只打算让用户在线上玩，把所有 `localhost:5173` 都换成你的线上地址即可**；如果你想本地也调试，就两个都加（不冲突）。
+
 1. Supabase 左侧 **Authentication** → **URL Configuration**
-2. **Site URL**：填 `http://localhost:5173`（或你的部署域名）
+2. **Site URL**：填你的线上地址 `https://sudoku-3ss.pages.dev`（本地调试可填 `http://localhost:5173`）
 3. **Redirect URLs**：点 **Add URL**，加上：
-   - `http://localhost:5173`
-   - 以及你以后部署的网站地址（如 `https://your-site.com`）
+   - `https://sudoku-3ss.pages.dev`（**必加**，线上用户走这个）
+   - `http://localhost:5173`（可选，仅本地调试用）
 4. 点 **Save**
 
 > ⚠️ **GitHub 的 Client Secret 你自己保存即可，不必发给我。** 只有 Supabase 后台需要它。
@@ -229,5 +233,5 @@ create policy "user_data_own_row" on public.user_data
 - [ ] SQL Editor 执行了建表语句，显示 `Success`
 - [ ] （可选）GitHub OAuth App 已创建，拿到 Client ID / Secret
 - [ ] （可选）Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
-- [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加 `http://localhost:5173`
+- [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加线上地址 `https://sudoku-3ss.pages.dev`（本地调试可额外加 `http://localhost:5173`）
 - [ ] 已把 Project URL + anon key 发给我，并说「开始」（注明是否启用 GitHub）
