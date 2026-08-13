@@ -235,3 +235,18 @@ create policy "user_data_own_row" on public.user_data
 - [ ] （可选）Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
 - [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加线上地址 `https://sudoku-3ss.pages.dev`（本地调试可额外加 `http://localhost:5173`）
 - [ ] 已把 Project URL + anon key 发给我，并说「开始」（注明是否启用 GitHub）
+
+---
+
+## 9. 代码已就绪，如何验证跨设备同步
+
+同步代码已合入 `feature/supabase-sync` 分支（顶栏新增 👤 账号按钮）。你那边只需：
+
+1. **在 Supabase 执行建表 SQL**（第 3 节），否则登录后会报 `relation user_data does not exist`。
+2. **部署新版到 Cloudflare Pages**（覆盖 `sudoku-3ss.pages.dev`）。本地 `npm run dev` 也可，但记得 Redirect URLs 里加了 `localhost`。
+3. 打开网站 → 点 👤 → 输入邮箱 → 收魔法链接 → 点开即登录。
+4. 玩几局 / 改设置 → 数据会自动防抖回写云端（账号按钮里可「立即同步」）。
+5. 换设备（或同设备清掉本地存储）用同一邮箱登录 → 历史 / 排行 / 设置自动拉回。
+6. GitHub 登录：仅当 Supabase 后台已启用 GitHub provider 时才显示按钮；没启用则点了会报错，属正常。
+
+> 邮箱魔法链接可能进垃圾邮件；若一直收不到，检查 Supabase 左侧 **Authentication → Email** 的发信配置（Free 层用 Supabase 自带发信，稳定后可配自定义 SMTP）。
