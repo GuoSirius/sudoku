@@ -75,10 +75,11 @@ create policy "user_data_own_row" on public.user_data
 需要做的配置：
 
 1. **启用 Email provider**：Authentication → Providers → Email，确保 **Enable**（默认开）。OTP 验证码由 Supabase 通过邮件发送。
-2. **（生产必做）配置自定义 SMTP**：Supabase 自带邮件服务有发送限额且标注「请勿用于生产」。正式上线前请在 Authentication → Email → 自定义 SMTP 接入自己的邮件服务（如 Postmark / SendGrid / 企业邮箱），否则可能收不到验证码或被限流。
+2. **配置自定义 SMTP（必须，否则改不了模板也发不稳）**  
+   Supabase 自定义 Email Templates 依赖自定义 SMTP。路径：**Authentication → Emails → Custom SMTP**。字段含义与填法见下方「自定义 SMTP 填表指南」。
 3. **关键：把邮件模板从「链接」改成「验证码」**  
-   Supabase 默认的 Magic Link 模板发送的是**可点击链接**（`{{ .ConfirmationURL }}`）。 our app uses in-app OTP, so you must change it to display the **6-digit code** (`{{ .Token }}`).
-   - 路径：**Authentication → Email Templates → Magic Link / Sign In**
+   Supabase 默认的 Magic Link 模板发送的是**可点击链接**（`{{ .ConfirmationURL }}`）。本项目用应用内 OTP，所以必须改成显示 **6 位数字码**（`{{ .Token }}`）。
+   - 路径：**Authentication → Templates → Magic Link / Sign In**
    - 把模板里所有 `{{ .ConfirmationURL }}` 删掉或注释掉
    - 在正文合适位置加上 `{{ .Token }}`，例如：
      ```html
@@ -87,7 +88,61 @@ create policy "user_data_own_row" on public.user_data
      ```
    - 保存后再次测试，邮件里应只显示 6 位数字，没有可点击链接。
 
-> 不依赖 Redirect URL（验证码在应用内输入），但 Email provider 与 SMTP 必须可用。如果模板不改，用户收到的仍是链接，前端 OTP 输入框永远用不上。
+> 不依赖 Redirect URL（验证码在应用内输入），但 Email provider、自定义 SMTP、正确模板三者缺一不可。模板不改，用户收到的仍是链接，前端 OTP 输入框永远用不上。
+
+### 自定义 SMTP 填表指南
+
+Supabase 后台路径：**Authentication → Emails → Custom SMTP**。截图里的各字段填法如下：
+
+| 字段 | 含义 | 填法 |
+|------|------|------|
+| **Sender email address** | 发件人邮箱地址 | 填你用来发信的邮箱，如 `noreply@yourdomain.com`。没有自己的域名时，可填 `你的昵称@163.com` 或 QQ 邮箱，但收件箱会显示这个地址。 |
+| **Sender name** | 发件人显示名称 | 填 `数独` 或 `Sudoku`，收件人看到的发件人名字。 |
+| **Host** | SMTP 服务器地址 | 根据你的邮件服务商填写，见下表。 |
+| **Port number** | SMTP 端口 | 优先填 **465**（SSL），其次 **587**（TLS）。不要用 25 端口，基本被运营商/云服务商封掉。 |
+| **Minimum interval per user** | 同一用户两次发信最小间隔 | 默认 **60** 秒即可，防刷。 |
+| **Username** | SMTP 用户名 | 通常就是完整邮箱地址。 |
+| **Password** | SMTP 密码 | **不是邮箱登录密码**，而是邮箱服务商提供的「授权码 / App Password / SMTP 专用密码」。 |
+
+#### 常用国内邮箱 SMTP 配置（免费、适合个人/小项目）
+
+**网易 163 邮箱**
+- Host：`smtp.163.com`
+- Port：`465`
+- Username：`你的完整 163 邮箱地址`（如 `guoplc@163.com`）
+- Password：163 邮箱的**授权码**（不是登录密码）
+  - 获取方式：登录 163 邮箱 → 设置 → POP3/SMTP/IMAP → 开启 SMTP → 按提示发短信，获得 16 位授权码。
+
+**QQ 邮箱**
+- Host：`smtp.qq.com`
+- Port：`465`
+- Username：`你的完整 QQ 邮箱地址`（如 `123456@qq.com`）
+- Password：QQ 邮箱的**授权码**
+  - 获取方式：登录 QQ 邮箱 → 设置 → 账户 → 开启 POP3/SMTP 服务 → 按提示获得 16 位授权码。
+
+> ⚠️ 163/QQ 免费 SMTP 有每日/每小时发信限额，且验证码邮件可能被 Gmail/Outlook 等海外邮箱拦截进垃圾箱。仅供测试和小范围使用；正式运营建议用企业邮箱或专业邮件服务商。
+
+#### 专业邮件服务商（适合生产环境）
+
+| 服务商 | Host 示例 | 特点 |
+|--------|-----------|------|
+| **SendGrid** | `smtp.sendgrid.net` | 国际主流，免费档每天 100 封，国内访问可能不稳。 |
+| **Mailgun** | `smtp.mailgun.org` | 需绑定域名，按量计费，海外送达率高。 |
+| **Postmark** | `smtp.postmarkapp.com` | Transactional 邮件专攻，送达率高，但需海外支付。 |
+| **Amazon SES** | 区域 host | 最便宜，配置略复杂，需 AWS 账号。 |
+| **阿里云邮件推送 / 腾讯云邮件** | 按产品文档 | 国内接入方便，需域名备案，适合国内用户。 |
+
+#### 保存后如何验证
+
+1. 在 Supabase 保存 SMTP 配置。
+2. 回到 **Authentication → Templates → Magic Link / Sign In**，确保模板只含 `{{ .Token }}`、不含 `{{ .ConfirmationURL }}`。
+3. 打开数独网站 → 点账号按钮 → 输入你的邮箱 → 发送验证码。
+4. 去邮箱收件箱（或垃圾箱）查看，应收到显示 6 位数字的邮件。
+5. 如果 1 分钟内没到：
+   - 检查 SMTP 配置是否保存成功；
+   - 确认填的是「授权码」而不是邮箱登录密码；
+   - 看 Supabase 后台 Auth → Logs 有无发送失败记录；
+   - 163/QQ 用户注意是否触发每日限额。
 
 ### GitHub 登录（可选，PKCE）
 
@@ -154,7 +209,14 @@ create policy "user_data_own_row" on public.user_data
 
 ### 坑 5：邮箱验证码收不到
 
-免费层邮件可能进垃圾邮件或被限流；**生产环境务必在 Supabase → Authentication → Email 配置自定义 SMTP**，否则可能长期收不到验证码。同时确认 Email Templates 的 Sign In 模板含 `{{ .Token }}`。
+**原因 1**：没配自定义 SMTP，Supabase 免费邮件服务被限流或进垃圾箱。  
+**修复 1**：按上方「自定义 SMTP 填表指南」配置一个 SMTP（163/QQ 适合测试，专业服务商适合生产）。
+
+**原因 2**：模板里还是 `{{ .ConfirmationURL }}`，发的是链接而不是验证码。  
+**修复 2**：改成 `{{ .Token }}`，参见「坑 4」。
+
+**原因 3**：SMTP 密码填成了邮箱登录密码，而不是授权码。  
+**修复 3**：163/QQ 等邮箱需要单独开启 SMTP 并获取授权码，参见「自定义 SMTP 填表指南」。
 
 ---
 
