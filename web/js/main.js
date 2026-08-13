@@ -47,6 +47,24 @@ function openMiniWindow() {
   );
   if (!w) toast('弹窗被拦截，请允许本站点弹出窗口');
 }
+// 点击「摸鱼小窗」按钮时先二次确认，避免误触弹出独立窗口
+function confirmOpenMini() {
+  showModal({
+    title: '打开摸鱼小窗',
+    body: '<p>将打开一个独立的摸鱼小窗（只显示棋盘、强制暗色），可拖到屏幕角落。确定打开吗？</p>',
+    actions: [
+      { label: '取消', ghost: true, onClick: closeModal },
+      {
+        label: '打开小窗',
+        primary: true,
+        onClick: () => {
+          closeModal();
+          openMiniWindow();
+        },
+      },
+    ],
+  });
+}
 
 // 老板键：在游戏与「伪装工作界面」之间瞬间切换
 // 伪装成哪种开发可在「设置 → 摸鱼伪装」里选，画面会跟随技术栈渲染对应代码
@@ -1308,8 +1326,8 @@ function init() {
   };
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
-  $('btn-mini').onclick = openMiniWindow;
-  $('btn-settings-mini').onclick = openMiniWindow;
+  $('btn-mini').onclick = confirmOpenMini;
+  $('btn-settings-mini').onclick = confirmOpenMini;
 
   $('rp-first').onclick = () => {
     stopReplay();
