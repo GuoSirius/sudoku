@@ -38,8 +38,43 @@ jobs:
           path: web.zip
           if-no-files-found: error
 
+  # 1.5) 提前创建 GitHub Release（供 Tauri 上传 latest.json/签名，避免 tauri-action 自行创建导致的权限冲突）
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Extract release notes
+        id: notes
+        run: node tools/extract-release-notes.mjs "${GITHUB_REF_NAME}" > /tmp/notes.md
+
+      - name: Create GitHub Release
+        id: create
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/notes.md \
+            --repo "$GITHUB_REPOSITORY"
+          REL_ID=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)
+          echo "release_id=$REL_ID" >> "$GITHUB_OUTPUT"
+
   # 2) 构建 Windows 桌面壳（exe + msi）
   build-tauri:
+    needs: [prepare-release]
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -57,7 +92,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 使用官方 action 构建签名安装包并生成 latest.json，结果直接上传到本 tag 的 release
+      # 构建签名安装包并生成 latest.json，产物（exe/.sig/latest.json）上传到 prepare-release 已创建的 Release
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0
         env:
@@ -66,10 +101,8 @@ jobs:
         with:
           projectPath: ./src-tauri
           args: --target x86_64-pc-windows-msvc
-          releaseName: ${{ github.ref_name }}
+          releaseId: ${{ needs.prepare-release.outputs.release_id }}
           tagName: ${{ github.ref_name }}
-          releaseDraft: false
-          prerelease: false
 
       - name: Upload Tauri artifacts
         uses: actions/upload-artifact@v4
@@ -140,44 +173,25 @@ jobs:
           path: app/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-  # 4) 汇总 artifacts 并创建 GitHub Release
+  # 4) 汇总 artifacts 并补充上传到已创建的 GitHub Release
   release:
-    needs: [build-web, build-tauri, build-android]
+    needs: [build-web, build-tauri, build-android, prepare-release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Extract release notes
-        id: notes
-        run: |
-          NOTES=$(node tools/extract-release-notes.mjs "${GITHUB_REF_NAME}")
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "$EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: ${{ steps.notes.outputs.body }}
-          files: |
-            artifacts/web/web.zip
-            artifacts/tauri-windows/*
-            artifacts/android-debug/*
+      - name: Upload web & android assets to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(find artifacts/android-debug -name '*.apk' | head -1)
+          gh release upload "$GITHUB_REF_NAME" \
+            artifacts/web/web.zip \
+            "$APK" \
+            --repo "$GITHUB_REPOSITORY"
