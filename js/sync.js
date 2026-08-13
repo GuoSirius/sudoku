@@ -231,10 +231,15 @@ function openAccountModal() {
       primary: false,
       onClick: async () => {
         closeModal();
-        const { error } = await supabase.auth.signInWithOAuth({
+        console.log('[sync] GitHub 登录：当前 origin =', window.location.origin);
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: { redirectTo: window.location.origin },
         });
+        console.log('[sync] GitHub OAuth 跳转 URL =', data && data.url);
+        try {
+          if (data && data.url) sessionStorage.setItem('last_oauth_url', data.url);
+        } catch (_) {}
         if (error) notify('GitHub 登录失败：' + error.message);
         // 成功会跳转 GitHub，授权后跳回 redirectTo
       },
