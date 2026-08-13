@@ -9,7 +9,10 @@
     "test": "node tools/test-engine.mjs && node tools/test-game.mjs && node tools/test-dom.mjs && node tools/test-restore.mjs",
     "deploy": "node tools/deploy-schema.mjs && npx wrangler pages deploy . --project-name=sudoku",
     "deploy:schema": "node tools/deploy-schema.mjs",
-    "gen:icons": "python tools/gen_icons.py"
+    "gen:icons": "python tools/gen_icons.py",
+    "app:sync": "cd app && npm run sync",
+    "app:add:android": "cd app && npm run cap:add:android",
+    "app:open:android": "cd app && npx cap open android"
   },
   "devDependencies": {
     "pg": "^8.23.0"

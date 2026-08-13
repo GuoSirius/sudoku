@@ -5,7 +5,13 @@
 //  - 本地任何变动（历史/排行/设置）防抖 800ms 后整行回写云端（每用户一行，RLS 隔离）。
 //  - 未登录 / 离线 / 推送失败都不影响本地游玩，下次变动或登录再同步。
 
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ENABLE_GITHUB, ENABLE_PHONE } from './config.js';
+import {
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  ENABLE_GITHUB,
+  ENABLE_PHONE,
+  OTP_LENGTH,
+} from './config.js';
 import { storage } from './storage.js';
 
 let supabase = null;
@@ -301,22 +307,23 @@ function openOtpModal(method, identifier) {
 
   const tip = document.createElement('p');
   tip.className = 'setting-hint';
-  tip.textContent = '验证码已发送至 ' + identifier + '，请在应用内输入 6 位码完成登录。';
+  tip.textContent =
+    '验证码已发送至 ' + identifier + '，请在应用内输入 ' + OTP_LENGTH + ' 位码完成登录。';
   body.appendChild(tip);
 
   const code = document.createElement('input');
   code.type = 'text';
   code.inputMode = 'numeric';
-  code.maxLength = 8;
-  code.placeholder = '6 位验证码';
+  code.maxLength = OTP_LENGTH;
+  code.placeholder = OTP_LENGTH + ' 位验证码';
   code.style.cssText =
     'padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:20px;letter-spacing:6px;text-align:center';
   body.appendChild(code);
 
   const verify = async () => {
     const token = code.value.trim();
-    if (!/^\d{4,8}$/.test(token)) {
-      notify('请输入正确的验证码');
+    if (!new RegExp('^\\d{' + OTP_LENGTH + '}$').test(token)) {
+      notify('请输入 ' + OTP_LENGTH + ' 位数字验证码');
       return;
     }
     closeModal();

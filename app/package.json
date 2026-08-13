@@ -1,0 +1,23 @@
+{
+  "name": "sudoku-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "数独 App（Capacitor 封装，安卓/iOS）",
+  "scripts": {
+    "sync": "node sync.mjs",
+    "cap": "cap",
+    "cap:add:android": "cap add android && node scripts/patch-android-gradle.mjs",
+    "cap:add:ios": "cap add ios",
+    "patch:android": "node scripts/patch-android-gradle.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/ios": "^8.4.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "typescript": "^5.9.3"
+  }
+}

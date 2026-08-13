@@ -1,0 +1,9 @@
+node_modules/
+android/
+ios/
+www/
+.DS_Store
+*.log
+# Android Studio / JetBrains IDE 私有元数据（本机生成，含绝对路径，禁止入库）
+.idea/
+*.iml

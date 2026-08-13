@@ -12,3 +12,6 @@ export const ENABLE_GITHUB = true;
 // 手机号登录：默认关闭。开启需在 Supabase 后台启用 Phone Auth 并接入 SMS 服务商（Twilio 等，按条计费）。
 // 因付费暂不使用，代码保留但休眠；后续如需可改为 true 并配置 SMS 服务商即可启用。
 export const ENABLE_PHONE = false;
+
+// 邮箱验证码位数，需与 Supabase 后台 Authentication → Email → Email OTP length 保持一致（默认 6）。
+export const OTP_LENGTH = 6;

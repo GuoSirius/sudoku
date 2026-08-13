@@ -62,3 +62,11 @@ coverage/
 # ============ 账号 / 工程辅助目录 ============
 .claude/
 .workbuddy/
+
+# ============ Capacitor App 生成目录（由 cap add / sync 生成，不入库） ============
+app/android/
+app/ios/
+app/www/
+app/node_modules/
+app/.idea/
+app/*.iml

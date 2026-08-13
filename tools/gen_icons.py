@@ -6,6 +6,7 @@ import struct
 import os
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'icons')
+APP_RES = os.path.join(os.path.dirname(__file__), '..', 'app', 'resources')
 
 
 def write_png(path, w, h, pixels):
@@ -80,10 +81,14 @@ def make_icon(S, rounded):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    os.makedirs(APP_RES, exist_ok=True)
     write_png(os.path.join(OUT, 'icon-192.png'), 192, 192, make_icon(192, True))
     write_png(os.path.join(OUT, 'icon-512.png'), 512, 512, make_icon(512, True))
     write_png(os.path.join(OUT, 'maskable-512.png'), 512, 512, make_icon(512, False))
-    print('图标已生成:', os.listdir(OUT))
+    # Capacitor/cordova-res 推荐 1024x1024 源图生成安卓/iOS 各尺寸图标
+    write_png(os.path.join(APP_RES, 'icon.png'), 1024, 1024, make_icon(1024, True))
+    print('PWA 图标已生成:', os.listdir(OUT))
+    print('App 图标源图已生成:', os.path.join(APP_RES, 'icon.png'))
 
 
 if __name__ == '__main__':
