@@ -24,6 +24,7 @@
     "pg": "^8.23.0"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.11.1"
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-updater": "^2.10.1"
   }
 }

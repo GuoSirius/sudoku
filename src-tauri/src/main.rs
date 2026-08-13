@@ -8,6 +8,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -91,6 +92,11 @@ fn main() {
                         if let Ok(url) = online_url.parse() {
                             let _ = window.navigate(url);
                         }
+                    } else {
+                        let _ = window.emit(
+                            "offline-mode",
+                            "当前使用本地离线资源，线上版本可能已更新，建议联网后重启应用获取最新版本。",
+                        );
                     }
                 });
             }

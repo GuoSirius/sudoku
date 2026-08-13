@@ -54,85 +54,85 @@ const BOSS_LANGS = {
   frontend: {
     file: 'pages/dashboard.vue',
     html:
-      `<span class="tag">&lt;script setup&gt;</span>\n` +
-      `<span class="kw">import</span> { ref, computed } <span class="kw">from</span> <span class="st">'vue'</span>\n` +
-      `<span class="kw">import</span> type { Order } <span class="kw">from</span> <span class="st">'~/types/order'</span>\n\n` +
-      `<span class="kw">const</span> { data: orders, pending } = <span class="kw">await</span> <span class="fn">useFetch</span>&lt;Order[]&gt;(<span class="st">'/api/orders'</span>)\n` +
-      `<span class="kw">const</span> keyword = <span class="fn">ref</span>(<span class="st">''</span>)\n\n` +
-      `<span class="kw">const</span> filtered = <span class="fn">computed</span>(() =&gt;\n` +
-      `  orders.value?.<span class="fn">filter</span>((o) =&gt; o.id.<span class="fn">includes</span>(keyword.value)) ?? []\n` +
+      `<span class="boss-tag">&lt;script setup&gt;</span>\n` +
+      `<span class="boss-kw">import</span> { ref, computed } <span class="boss-kw">from</span> <span class="boss-st">'vue'</span>\n` +
+      `<span class="boss-kw">import</span> type { Order } <span class="boss-kw">from</span> <span class="boss-st">'~/types/order'</span>\n\n` +
+      `<span class="boss-kw">const</span> { data: orders, pending } = <span class="boss-kw">await</span> <span class="boss-fn">useFetch</span>&lt;Order[]&gt;(<span class="boss-st">'/api/orders'</span>)\n` +
+      `<span class="boss-kw">const</span> keyword = <span class="boss-fn">ref</span>(<span class="boss-st">''</span>)\n\n` +
+      `<span class="boss-kw">const</span> filtered = <span class="boss-fn">computed</span>(() =&gt;\n` +
+      `  orders.value?.<span class="boss-fn">filter</span>((o) =&gt; o.id.<span class="boss-fn">includes</span>(keyword.value)) ?? []\n` +
       `)\n\n` +
-      `<span class="kw">const</span> total = <span class="fn">computed</span>(() =&gt; filtered.value.<span class="fn">reduce</span>((sum, o) =&gt; sum + o.amount, <span class="num">0</span>))\n<span class="tag">&lt;/script&gt;</span>\n\n` +
-      `<span class="tag">&lt;template&gt;</span>\n` +
-      `  <span class="tag">&lt;main</span> <span class="at">class</span>=<span class="st">"min-h-screen bg-gray-950 p-6 text-gray-200"</span><span class="tag">&gt;</span>\n` +
-      `    <span class="tag">&lt;section</span> <span class="at">class</span>=<span class="st">"mb-4 flex items-center justify-between"</span><span class="tag">&gt;</span>\n` +
-      `      <span class="tag">&lt;h1</span> <span class="at">class</span>=<span class="st">"text-xl font-bold"</span><span class="tag">&gt;</span>订单概览<span class="tag">&lt;/h1&gt;</span>\n` +
-      `      <span class="tag">&lt;input</span> <span class="at">v-model</span>=<span class="st">"keyword"</span> <span class="at">placeholder</span>=<span class="st">"搜索订单号"</span>\n` +
-      `             <span class="at">class</span>=<span class="st">"rounded bg-gray-800 px-3 py-1 outline-none"</span> <span class="tag">/&gt;</span>\n` +
-      `    <span class="tag">&lt;/section&gt;</span>\n` +
-      `    <span class="tag">&lt;div</span> <span class="at">v-if</span>=<span class="st">"pending"</span> <span class="at">class</span>=<span class="st">"text-center text-gray-500"</span><span class="tag">&gt;</span>加载中...<span class="tag">&lt;/div&gt;</span>\n` +
-      `    <span class="tag">&lt;table</span> <span class="at">v-else</span> <span class="at">class</span>=<span class="st">"w-full border-collapse text-sm"</span><span class="tag">&gt;</span>\n` +
-      `      <span class="tag">&lt;thead</span> <span class="at">class</span>=<span class="st">"text-left text-gray-400"</span><span class="tag">&gt;&lt;tr&gt;</span><span class="tag">&lt;th&gt;</span>订单号<span class="tag">&lt;/th&gt;&lt;th&gt;</span>金额<span class="tag">&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;</span>\n` +
-      `      <span class="tag">&lt;tbody&gt;</span>\n` +
-      `        <span class="tag">&lt;tr</span> <span class="at">v-for</span>=<span class="st">"o in filtered"</span> <span class="at">:key</span>=<span class="st">"o.id"</span> <span class="at">class</span>=<span class="st">"border-b border-gray-800"</span><span class="tag">&gt;</span>\n` +
-      `          <span class="tag">&lt;td&gt;</span>{{ o.id }}<span class="tag">&lt;/td&gt;</span> <span class="tag">&lt;td&gt;</span>¥{{ o.amount.toFixed(<span class="num">2</span>) }}<span class="tag">&lt;/td&gt;</span>\n` +
-      `        <span class="tag">&lt;/tr&gt;</span>\n` +
-      `      <span class="tag">&lt;/tbody&gt;</span>\n` +
-      `    <span class="tag">&lt;/table&gt;</span>\n` +
-      `    <span class="tag">&lt;p</span> <span class="at">class</span>=<span class="st">"mt-4 text-right text-gray-400"</span><span class="tag">&gt;</span>合计：¥{{ total.toFixed(<span class="num">2</span>) }}<span class="tag">&lt;/p&gt;</span>\n` +
-      `  <span class="tag">&lt;/main&gt;</span>\n` +
-      `<span class="tag">&lt;/template&gt;</span>\n\n` +
-      `<span class="cm">&lt;!-- TODO: 接入 UnoCSS 后把硬编码 class 换成 @apply --&gt;</span>`,
+      `<span class="boss-kw">const</span> total = <span class="boss-fn">computed</span>(() =&gt; filtered.value.<span class="boss-fn">reduce</span>((sum, o) =&gt; sum + o.amount, <span class="boss-num">0</span>))\n<span class="boss-tag">&lt;/script&gt;</span>\n\n` +
+      `<span class="boss-tag">&lt;template&gt;</span>\n` +
+      `  <span class="boss-tag">&lt;main</span> <span class="boss-at">class</span>=<span class="boss-st">"min-h-screen bg-gray-950 p-6 text-gray-200"</span><span class="boss-tag">&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;section</span> <span class="boss-at">class</span>=<span class="boss-st">"mb-4 flex items-center justify-between"</span><span class="boss-tag">&gt;</span>\n` +
+      `      <span class="boss-tag">&lt;h1</span> <span class="boss-at">class</span>=<span class="boss-st">"text-xl font-bold"</span><span class="boss-tag">&gt;</span>订单概览<span class="boss-tag">&lt;/h1&gt;</span>\n` +
+      `      <span class="boss-tag">&lt;input</span> <span class="boss-at">v-model</span>=<span class="boss-st">"keyword"</span> <span class="boss-at">placeholder</span>=<span class="boss-st">"搜索订单号"</span>\n` +
+      `             <span class="boss-at">class</span>=<span class="boss-st">"rounded bg-gray-800 px-3 py-1 outline-none"</span> <span class="boss-tag">/&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;/section&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;div</span> <span class="boss-at">v-if</span>=<span class="boss-st">"pending"</span> <span class="boss-at">class</span>=<span class="boss-st">"text-center text-gray-500"</span><span class="boss-tag">&gt;</span>加载中...<span class="boss-tag">&lt;/div&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;table</span> <span class="boss-at">v-else</span> <span class="boss-at">class</span>=<span class="boss-st">"w-full border-collapse text-sm"</span><span class="boss-tag">&gt;</span>\n` +
+      `      <span class="boss-tag">&lt;thead</span> <span class="boss-at">class</span>=<span class="boss-st">"text-left text-gray-400"</span><span class="boss-tag">&gt;&lt;tr&gt;</span><span class="boss-tag">&lt;th&gt;</span>订单号<span class="boss-tag">&lt;/th&gt;&lt;th&gt;</span>金额<span class="boss-tag">&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;</span>\n` +
+      `      <span class="boss-tag">&lt;tbody&gt;</span>\n` +
+      `        <span class="boss-tag">&lt;tr</span> <span class="boss-at">v-for</span>=<span class="boss-st">"o in filtered"</span> <span class="boss-at">:key</span>=<span class="boss-st">"o.id"</span> <span class="boss-at">class</span>=<span class="boss-st">"border-b border-gray-800"</span><span class="boss-tag">&gt;</span>\n` +
+      `          <span class="boss-tag">&lt;td&gt;</span>{{ o.id }}<span class="boss-tag">&lt;/td&gt;</span> <span class="boss-tag">&lt;td&gt;</span>¥{{ o.amount.toFixed(<span class="boss-num">2</span>) }}<span class="boss-tag">&lt;/td&gt;</span>\n` +
+      `        <span class="boss-tag">&lt;/tr&gt;</span>\n` +
+      `      <span class="boss-tag">&lt;/tbody&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;/table&gt;</span>\n` +
+      `    <span class="boss-tag">&lt;p</span> <span class="boss-at">class</span>=<span class="boss-st">"mt-4 text-right text-gray-400"</span><span class="boss-tag">&gt;</span>合计：¥{{ total.toFixed(<span class="boss-num">2</span>) }}<span class="boss-tag">&lt;/p&gt;</span>\n` +
+      `  <span class="boss-tag">&lt;/main&gt;</span>\n` +
+      `<span class="boss-tag">&lt;/template&gt;</span>\n\n` +
+      `<span class="boss-cm">&lt;!-- TODO: 接入 UnoCSS 后把硬编码 class 换成 @apply --&gt;</span>`,
   },
   php: {
     file: 'api.php',
     html:
-      `<span class="tag">&lt;?php</span>\n` +
-      `<span class="kw">require_once</span> <span class="st">'../bootstrap.php'</span>;\n\n` +
-      `<span class="kw">use</span> App\\Service\\OrderService;\n\n` +
-      `<span class="fn">$service</span> = <span class="kw">new</span> <span class="fn">OrderService</span>();\n` +
-      `<span class="fn">$page</span> = <span class="fn">$_GET</span>[<span class="st">'page'</span>] ?? <span class="num">1</span>;\n` +
-      `<span class="fn">$list</span> = <span class="fn">$service</span>-&gt;<span class="fn">paginate</span>(<span class="fn">$page</span>, <span class="num">20</span>);\n\n` +
-      `<span class="kw">header</span>(<span class="st">'Content-Type: application/json'</span>);\n` +
-      `<span class="kw">echo</span> <span class="fn">json_encode</span>([\n` +
-      `  <span class="st">'total'</span> =&gt; <span class="fn">$list</span>-&gt;total,\n` +
-      `  <span class="st">'items'</span> =&gt; <span class="fn">$list</span>-&gt;items,\n` +
+      `<span class="boss-tag">&lt;?php</span>\n` +
+      `<span class="boss-kw">require_once</span> <span class="boss-st">'../bootstrap.php'</span>;\n\n` +
+      `<span class="boss-kw">use</span> App\\Service\\OrderService;\n\n` +
+      `<span class="boss-fn">$service</span> = <span class="boss-kw">new</span> <span class="boss-fn">OrderService</span>();\n` +
+      `<span class="boss-fn">$page</span> = <span class="boss-fn">$_GET</span>[<span class="boss-st">'page'</span>] ?? <span class="boss-num">1</span>;\n` +
+      `<span class="boss-fn">$list</span> = <span class="boss-fn">$service</span>-&gt;<span class="boss-fn">paginate</span>(<span class="boss-fn">$page</span>, <span class="boss-num">20</span>);\n\n` +
+      `<span class="boss-kw">header</span>(<span class="boss-st">'Content-Type: application/json'</span>);\n` +
+      `<span class="boss-kw">echo</span> <span class="boss-fn">json_encode</span>([\n` +
+      `  <span class="boss-st">'total'</span> =&gt; <span class="boss-fn">$list</span>-&gt;total,\n` +
+      `  <span class="boss-st">'items'</span> =&gt; <span class="boss-fn">$list</span>-&gt;items,\n` +
       `]);\n\n` +
-      `<span class="cm">// TODO: 加一层缓存，降低数据库压力</span>`,
+      `<span class="boss-cm">// TODO: 加一层缓存，降低数据库压力</span>`,
   },
   java: {
     file: 'ReportService.java',
     html:
-      `<span class="kw">package</span> com.acme.report;\n\n` +
-      `<span class="kw">import</span> java.util.List;\n` +
-      `<span class="kw">import</span> org.springframework.stereotype.Service;\n\n` +
-      `<span class="kw">@Service</span>\n` +
-      `<span class="kw">public class</span> <span class="fn">ReportService</span> {\n` +
-      `  <span class="kw">private final</span> OrderRepository repo;\n\n` +
-      `  <span class="kw">public</span> <span class="fn">ReportService</span>(OrderRepository repo) {\n` +
-      `    <span class="kw">this</span>.repo = repo;\n` +
+      `<span class="boss-kw">package</span> com.acme.report;\n\n` +
+      `<span class="boss-kw">import</span> java.util.List;\n` +
+      `<span class="boss-kw">import</span> org.springframework.stereotype.Service;\n\n` +
+      `<span class="boss-kw">@Service</span>\n` +
+      `<span class="boss-kw">public class</span> <span class="boss-fn">ReportService</span> {\n` +
+      `  <span class="boss-kw">private final</span> OrderRepository repo;\n\n` +
+      `  <span class="boss-kw">public</span> <span class="boss-fn">ReportService</span>(OrderRepository repo) {\n` +
+      `    <span class="boss-kw">this</span>.repo = repo;\n` +
       `  }\n\n` +
-      `  <span class="kw">public</span> Report <span class="fn">build</span>(String quarter) {\n` +
-      `    List&lt;Order&gt; orders = repo.<span class="fn">findByQuarter</span>(quarter);\n` +
-      `    <span class="kw">double</span> total = orders.<span class="fn">stream</span>()\n` +
-      `        .<span class="fn">mapToDouble</span>(Order::getAmount)\n` +
-      `        .<span class="fn">sum</span>();\n` +
-      `    <span class="kw">return new</span> <span class="fn">Report</span>(quarter, total, orders.<span class="fn">size</span>());\n` +
+      `  <span class="boss-kw">public</span> Report <span class="boss-fn">build</span>(String quarter) {\n` +
+      `    List&lt;Order&gt; orders = repo.<span class="boss-fn">findByQuarter</span>(quarter);\n` +
+      `    <span class="boss-kw">double</span> total = orders.<span class="boss-fn">stream</span>()\n` +
+      `        .<span class="boss-fn">mapToDouble</span>(Order::getAmount)\n` +
+      `        .<span class="boss-fn">sum</span>();\n` +
+      `    <span class="boss-kw">return new</span> <span class="boss-fn">Report</span>(quarter, total, orders.<span class="boss-fn">size</span>());\n` +
       `  }\n` +
       `}`,
   },
   python: {
     file: 'analysis.py',
     html:
-      `<span class="kw">import</span> pandas <span class="kw">as</span> pd\n` +
-      `<span class="kw">from</span> datetime <span class="kw">import</span> date\n\n` +
-      `df = pd.<span class="fn">read_csv</span>(<span class="st">"sales_q3.csv"</span>)\n` +
-      `df[<span class="st">"month"</span>] = pd.to_datetime(df[<span class="st">"date"</span>]).dt.month\n` +
-      `pivot = df.<span class="fn">pivot_table</span>(index=<span class="st">"region"</span>, values=<span class="st">"amount"</span>, aggfunc=<span class="st">"sum"</span>)\n\n` +
-      `<span class="cm"># 按金额降序取 Top 10 区域</span>\n` +
-      `top = pivot.<span class="fn">sort_values</span>(<span class="st">"amount"</span>, ascending=<span class="kw">False</span>).<span class="fn">head</span>(<span class="num">10</span>)\n` +
-      `<span class="kw">print</span>(top)\n\n` +
-      `<span class="cm"># TODO: 核对 9 月异常波动，下周例会同步</span>`,
+      `<span class="boss-kw">import</span> pandas <span class="boss-kw">as</span> pd\n` +
+      `<span class="boss-kw">from</span> datetime <span class="boss-kw">import</span> date\n\n` +
+      `df = pd.<span class="boss-fn">read_csv</span>(<span class="boss-st">"sales_q3.csv"</span>)\n` +
+      `df[<span class="boss-st">"month"</span>] = pd.to_datetime(df[<span class="boss-st">"date"</span>]).dt.month\n` +
+      `pivot = df.<span class="boss-fn">pivot_table</span>(index=<span class="boss-st">"region"</span>, values=<span class="boss-st">"amount"</span>, aggfunc=<span class="boss-st">"sum"</span>)\n\n` +
+      `<span class="boss-cm"># 按金额降序取 Top 10 区域</span>\n` +
+      `top = pivot.<span class="boss-fn">sort_values</span>(<span class="boss-st">"amount"</span>, ascending=<span class="boss-kw">False</span>).<span class="boss-fn">head</span>(<span class="boss-num">10</span>)\n` +
+      `<span class="boss-kw">print</span>(top)\n\n` +
+      `<span class="boss-cm"># TODO: 核对 9 月异常波动，下周例会同步</span>`,
   },
 };
 function renderBoss() {
@@ -964,6 +964,37 @@ function renderSettings() {
       bwrap.appendChild(b);
     });
   }
+  // 更新检测：启动时自动 / 手动 / 关闭
+  const uwrap = $('set-update-check');
+  if (uwrap) {
+    uwrap.innerHTML = '';
+    const modes = [
+      ['startup', '启动时自动'],
+      ['manual', '手动检查'],
+      ['off', '关闭'],
+    ];
+    modes.forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (v === (s.updateCheck || 'startup') ? ' active' : '');
+      b.textContent = label;
+      b.dataset.v = v;
+      b.onclick = () => {
+        storage.setSettings({ updateCheck: v });
+        renderSettings();
+        toast('更新检测：' + label);
+      };
+      uwrap.appendChild(b);
+    });
+    const hint = $('set-update-hint');
+    if (hint) {
+      if (s.updateCheck === 'off') hint.textContent = '已关闭自动检测，可点击下方按钮手动检查更新。';
+      else if (s.updateCheck === 'manual') hint.textContent = '仅在你点击「检查更新」时检测新版本。';
+      else hint.textContent = '每次启动时自动检测是否有新版本；发现更新会提示你，由你决定是否下载安装。';
+    }
+    const btn = $('btn-check-update');
+    if (btn) btn.onclick = () => checkForUpdate({ silent: false });
+  }
+
   // 关于：版本号 / 构建日期 / 提交哈希（自动同步自 package.json）
   const verEl = $('set-version');
   const buildEl = $('set-build');
@@ -1157,6 +1188,12 @@ function init() {
   }
   // Tauri 桌面壳桥接：托盘菜单 / 全局快捷键（Alt+` 老板键、Alt+S 显隐）由 Rust 后端派发事件
   initTauriBridge();
+
+  // 桌面端自动更新检测（浏览器/PWA 跳过）
+  const updateMode = storage.getSettings().updateCheck || 'startup';
+  if (updateMode === 'startup' && isTauri()) {
+    setTimeout(() => checkForUpdate({ silent: true }), 2500);
+  }
 }
 
 // 仅在 Tauri 运行时挂载：监听后端派发的老板键 / 迷你模式事件，浏览器/PWA 中静默跳过
@@ -1165,6 +1202,7 @@ async function initTauriBridge() {
   try {
     const { listen } = await import('@tauri-apps/api/event');
     await listen('boss-toggle', () => toggleBoss());
+    await listen('offline-mode', (e) => toast(e.payload));
     await listen('mini-toggle', () => {
       const on = document.body.classList.toggle('mini');
       if (on) {
@@ -1179,6 +1217,68 @@ async function initTauriBridge() {
     console.info('[Tauri] 老板键桥接已挂载：Alt+` 切伪装 / Alt+S 显隐');
   } catch (e) {
     console.warn('[Tauri] 桥接初始化失败', e);
+  }
+}
+
+function isTauri() {
+  return typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+}
+
+function isCapacitor() {
+  return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform();
+}
+
+// 桌面壳/App 自动更新：启动时/手动检测，发现新版本由用户决定是否下载安装
+async function checkForUpdate({ silent = false } = {}) {
+  if (isCapacitor()) {
+    if (!silent) {
+      toast('App 更新请前往 GitHub Release 页面下载最新 APK');
+      try { window.open('https://github.com/GuoSirius/sudoku/releases/latest', '_blank'); } catch {}
+    }
+    return;
+  }
+  if (!isTauri()) {
+    if (!silent) toast('浏览器/PWA 端无需手动检测，刷新页面即可获取最新版本');
+    return;
+  }
+  try {
+    const { check } = await import('@tauri-apps/plugin-updater');
+    const update = await check();
+    if (update) {
+      const body = `发现新版本 <strong>v${update.version}</strong>（当前 v${update.currentVersion}），是否立即下载并安装？`;
+      showModal({
+        title: '发现更新',
+        body,
+        dismissable: false,
+        actions: [
+          { label: '稍后再说', ghost: true, onClick: () => closeModal() },
+          {
+            label: '立即更新',
+            primary: true,
+            onClick: async () => {
+              closeModal();
+              toast('正在下载更新，请稍候…');
+              try {
+                await update.downloadAndInstall((event) => {
+                  if (event.event === 'Finished') {
+                    toast('更新已下载，请重启应用');
+                  }
+                });
+                toast('更新已下载，请重启应用');
+              } catch (err) {
+                console.error('[updater] 下载安装失败', err);
+                toast('更新下载失败：' + (err.message || '未知错误'));
+              }
+            },
+          },
+        ],
+      });
+    } else if (!silent) {
+      toast('当前已是最新版本');
+    }
+  } catch (e) {
+    console.error('[updater] 检查更新失败', e);
+    if (!silent) toast('检查更新失败：' + (e.message || '未知错误'));
   }
 }
 

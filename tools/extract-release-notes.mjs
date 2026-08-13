@@ -14,8 +14,7 @@ const md = await readFile('CHANGELOG.md', 'utf8');
 // 匹配 ## [x.y.z] - YYYY-MM-DD 到下一个 ## [ 或文件末尾之间的内容
 const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const regex = new RegExp(
-  `##\\s*\\[${escaped}\\]\\s*-\\s*\\d{4}-\\d{2}-\\d{2}\\s*\\n([\\s\\S]*?)(?=\\n##\\s*\\[|$)`,
-  'm'
+  `##\\s*\\[${escaped}\\]\\s*-\\s*\\d{4}-\\d{2}-\\d{2}\\s*\\n([\\s\\S]*?)(?=\\n##\\s*\\[|$)`
 );
 
 const m = md.match(regex);

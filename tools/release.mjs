@@ -106,6 +106,79 @@ async function confirmRelease(version) {
   return ans.trim().toLowerCase() === 'y';
 }
 
+const TYPE_ORDER = [
+  { key: 'feat', title: 'Features' },
+  { key: 'fix', title: 'Bug Fixes' },
+  { key: 'ui', title: 'UI' },
+  { key: 'perf', title: 'Performance Improvements' },
+  { key: 'refactor', title: 'Code Refactoring' },
+  { key: 'style', title: 'Styles' },
+  { key: 'test', title: 'Tests' },
+  { key: 'build', title: 'Build System' },
+  { key: 'ci', title: 'CI/CD' },
+  { key: 'chore', title: 'Chores' },
+  { key: 'docs', title: 'Documentation' },
+];
+
+function parseCommit(line) {
+  const hash = line.slice(0, 7);
+  const subject = line.slice(8).trim();
+  const match = subject.match(/^(\w+)(?:\(([^)]+)\))?(!)?:\s*(.+)$/);
+  if (!match) {
+    return { type: 'other', scope: '', subject, hash, breaking: false };
+  }
+  const type = match[1].toLowerCase();
+  const scope = match[2] || '';
+  const breaking = match[3] === '!';
+  return { type, scope, subject: match[4], hash, breaking };
+}
+
+function groupCommits(lines) {
+  const groups = {};
+  const other = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const c = parseCommit(line);
+    if (c.type === 'other') {
+      other.push(c);
+      continue;
+    }
+    groups[c.type] = groups[c.type] || [];
+    groups[c.type].push(c);
+  }
+  return { groups, other };
+}
+
+function formatCommit(c) {
+  const scope = c.scope ? `**${c.scope}:** ` : '';
+  const marker = c.breaking ? '⚠️ ' : '';
+  return `- ${marker}${scope}${c.subject} ([${c.hash}])`;
+}
+
+function buildSection(version, date, rawLines) {
+  const { groups, other } = groupCommits(rawLines);
+  let md = `## [${version}] - ${date}\n\n`;
+
+  const ordered = TYPE_ORDER.filter((t) => groups[t.key] && groups[t.key].length);
+  for (const t of ordered) {
+    md += `### ${t.title}\n\n`;
+    for (const c of groups[t.key]) {
+      md += formatCommit(c) + '\n';
+    }
+    md += '\n';
+  }
+
+  if (other.length) {
+    md += '### Other\n\n';
+    for (const c of other) {
+      md += formatCommit(c) + '\n';
+    }
+    md += '\n';
+  }
+
+  return md.trimEnd() + '\n';
+}
+
 async function appendChangelog(version) {
   let lastTag = '';
   try {
@@ -116,12 +189,16 @@ async function appendChangelog(version) {
   const range = lastTag ? `${lastTag}..HEAD` : 'HEAD';
   let logs = '';
   try {
-    logs = run(`git log ${range} --pretty=format:"- %s"`, { inherit: false }).trim();
+    logs = run(`git log ${range} --pretty=format:"%h %s"`, { inherit: false }).trim();
   } catch {
     logs = '';
   }
   const date = new Date().toISOString().slice(0, 10);
-  const section = `## [${version}] - ${date}\n\n${logs || '- chore(release): 版本发布'}\n`;
+  const lines = logs ? logs.split('\n') : [];
+  if (!lines.length) {
+    lines.push(`${'0'.repeat(7)} chore(release): 版本发布`);
+  }
+  const section = buildSection(version, date, lines);
 
   const file = join(root, 'CHANGELOG.md');
   let content = '# Changelog\n\n';

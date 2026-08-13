@@ -799,6 +799,14 @@ body {
 .modal-actions .btn {
   width: 100%;
 }
+@media (max-width: 380px) {
+  .modal-actions {
+    grid-template-columns: 1fr;
+  }
+  .modal-actions .btn {
+    min-height: 42px;
+  }
+}
 .modal-stats {
   display: flex;
   justify-content: space-around;
@@ -1116,25 +1124,25 @@ body.boss #boss-screen {
   flex: 1;
   color: #cfcfcf;
 }
-.boss-code .cm {
+.boss-code .boss-cm {
   color: #6a9955;
 }
-.boss-code .kw {
+.boss-code .boss-kw {
   color: #569cd6;
 }
-.boss-code .st {
+.boss-code .boss-st {
   color: #ce9178;
 }
-.boss-code .fn {
+.boss-code .boss-fn {
   color: #dcdcaa;
 }
-.boss-code .num {
+.boss-code .boss-num {
   color: #b5cea8;
 }
-.boss-code .tag {
+.boss-code .boss-tag {
   color: #4ec9b0;
 }
-.boss-code .at {
+.boss-code .boss-at {
   color: #c586c0;
 }
 .boss-cursor {

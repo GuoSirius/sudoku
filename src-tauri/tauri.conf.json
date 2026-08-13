@@ -44,6 +44,17 @@
     ]
   },
   "plugins": {
-    "globalShortcut": {}
+    "globalShortcut": {},
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "endpoints": [
+        "https://github.com/GuoSirius/sudoku/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ5MUU3MkI1NjVDRjJDQTcKUldTbkxNOWx0WEllMmZUeWVIMC9ZTFh2OE1IU053U2oyWmppTSs4QS9WTm9mL1NJWTRJRXlNZE0K",
+      "windows": {
+        "installMode": "basicUi"
+      }
+    }
   }
 }
