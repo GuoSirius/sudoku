@@ -60,10 +60,10 @@ function updateAccountButton() {
   if (!btn) return;
   if (session && session.user) {
     const email = session.user.email || '已登录';
-    btn.textContent = '🟢';
-    btn.title = '已登录：' + email + '（点击管理）';
+    btn.classList.add('logged-in');
+    btn.title = '已登录：' + email + '（点击管理 / 退出登录）';
   } else {
-    btn.textContent = '👤';
+    btn.classList.remove('logged-in');
     btn.title = '登录 / 同步账号';
   }
 }
@@ -194,6 +194,15 @@ function openAccountModal() {
   hint.className = 'setting-hint';
   hint.textContent = '我们会向该邮箱发送一封魔法链接，点开即可登录（免密码）。链接可能在垃圾邮件里。';
   body.appendChild(hint);
+
+  if (ENABLE_GITHUB) {
+    const ghHint = document.createElement('p');
+    ghHint.className = 'setting-hint';
+    ghHint.style.marginTop = '4px';
+    ghHint.innerHTML =
+      '用 GitHub 登录会与上方邮箱账号自动合并为同一人（需同一邮箱且已验证）。请确保 GitHub 邮箱已公开：GitHub → Settings → Emails → 取消勾选「Keep my email addresses private」。';
+    body.appendChild(ghHint);
+  }
 
   const actions = [
     {
