@@ -151,7 +151,7 @@ create policy "user_data_own_row" on public.user_data
 2. 点 **New OAuth App**
 3. 填写：
    - **Application name**：`Sudoku Sync`（随便）
-   - **Homepage URL**：填你的网站地址，例如 `https://sudoku-3ss.pages.dev`（本地调试也可以填 `http://localhost:5173`，但线上用户用的是部署地址，建议直接填部署域名）
+   - **Homepage URL**：填你的网站地址，例如 `https://sudoku-3ss.pages.dev`（本地调试也可以填 `http://localhost:8137`，但线上用户用的是部署地址，建议直接填部署域名）
    - **Authorization callback URL（回调地址）**：填
      ```
      https://<你的project-ref>.supabase.co/auth/v1/callback
@@ -173,32 +173,34 @@ create policy "user_data_own_row" on public.user_data
 
 ### 4.3 配置跳转（Redirect）地址
 
-> **localhost 和线上地址的区别**：`localhost:5173` 只代表你**本机跑开发服务器**时的地址；`https://sudoku-3ss.pages.dev` 是你 Cloudflare Pages 上的**真实线上地址**。邮箱魔法链接 / GitHub 授权完成后，Supabase 会把用户跳回「在 Site URL / Redirect URLs 里、且与实际打开网站的地址一致」的那一个。所以**线上用户从哪个地址打开游戏，哪个地址就必须加进 Redirect URLs**，否则会报 redirect 错误。
+> **localhost 和线上地址的区别**：`localhost:8137` 只代表你**本机跑开发服务器**时的地址；`https://sudoku-3ss.pages.dev` 是你 Cloudflare Pages 上的**真实线上地址**。邮箱魔法链接 / GitHub 授权完成后，Supabase 会把用户跳回「在 Site URL / Redirect URLs 里、且与实际打开网站的地址一致」的那一个。所以**线上用户从哪个地址打开游戏，哪个地址就必须加进 Redirect URLs**，否则会报 redirect 错误。
 >
-> 结论：**如果只打算让用户在线上玩，把所有 `localhost:5173` 都换成你的线上地址即可**；如果你想本地也调试，就两个都加（不冲突）。
+> 结论：**如果只打算让用户在线上玩，把所有 `localhost:8137` 都换成你的线上地址即可**；如果你想本地也调试，就两个都加（不冲突）。
 
 1. Supabase 左侧 **Authentication** → **URL Configuration**
-2. **Site URL**：填你的线上地址 `https://sudoku-3ss.pages.dev`（本地调试可填 `http://localhost:5173`）
+2. **Site URL**：填你的线上地址 `https://sudoku-3ss.pages.dev`（本地调试可填 `http://localhost:8137`）
 3. **Redirect URLs**：点 **Add URL**，加上：
    - `https://sudoku-3ss.pages.dev`（**必加**，线上用户走这个）
-   - `http://localhost:5173`（可选，仅本地调试用）
+   - `http://localhost:8137`（可选，仅本地调试用）
 4. 点 **Save**
+
+> 📌 **本地端口从哪来**：本项目的本地服务器由 `tools/serve.mjs` 启动（`npm run dev`），默认端口就是 **8137**（代码里 `PORT = process.env.PORT || 8137`）。所以本地地址是 `http://localhost:8137`，不是 Vite 常见的 5173。**如果你用 `PORT=xxxx npm run dev` 改了端口，那 Redirect URLs 里就要加你实际改成的那个端口**——总之「你用哪个地址打开游戏，就把哪个地址加进白名单」。
 
 > ⚠️ **GitHub 的 Client Secret 你自己保存即可，不必发给我。** 只有 Supabase 后台需要它。
 
 #### ⚠️ 排错：为什么我在 localhost 用 GitHub 登录，却跳回了线上地址？
 
-**症状**：你用 `http://localhost:5173` 打开游戏，点「用 GitHub 登录」，授权完之后却被带回了 `https://sudoku-3ss.pages.dev`（线上），而不是你本地的 localhost。
+**症状**：你用 `http://localhost:8137` 打开游戏，点「用 GitHub 登录」，授权完之后却被带回了 `https://sudoku-3ss.pages.dev`（线上），而不是你本地的 localhost。
 
-**根因（记牢这一点）**：前端代码在发起 GitHub 登录时，会按你「当前打开网站的地址」自动设置回跳地址，也就是 `redirectTo: window.location.origin`（localhost 时就是 `http://localhost:5173`）。**但 Supabase 有个硬性规则：你传的 `redirectTo` 必须出现在上方「Redirect URLs」白名单里，否则它不认，直接回退到 Site URL。** 而你的 Site URL 填的是线上地址 `https://sudoku-3ss.pages.dev`，于是就被带到了线上。
+**根因（记牢这一点）**：前端代码在发起 GitHub 登录时，会按你「当前打开网站的地址」自动设置回跳地址，也就是 `redirectTo: window.location.origin`（localhost 时就是 `http://localhost:8137`）。**但 Supabase 有个硬性规则：你传的 `redirectTo` 必须出现在上方「Redirect URLs」白名单里，否则它不认，直接回退到 Site URL。** 而你的 Site URL 填的是线上地址 `https://sudoku-3ss.pages.dev`，于是就被带到了线上。
 
-换句话说：**代码没传错，是 Supabase 后台的 Redirect URLs 白名单里没有 `http://localhost:5173`。**
+换句话说：**代码没传错，是 Supabase 后台的 Redirect URLs 白名单里没有 `http://localhost:8137`。**
 
-**怎么验证**：回到 Supabase → **Authentication → URL Configuration**，看 **Redirect URLs** 那一行，确认里面**真的有** `http://localhost:5173` 这一条（不是只填在 Site URL，也不是只填了线上地址）。很多人只加了线上地址，漏了 localhost。
+**怎么验证**：回到 Supabase → **Authentication → URL Configuration**，看 **Redirect URLs** 那一行，确认里面**真的有** `http://localhost:8137` 这一条（不是只填在 Site URL，也不是只填了线上地址）。很多人只加了线上地址，漏了 localhost。
 
-**修复（一步）**：把 `http://localhost:5173` 加进 **Redirect URLs**（点 Add URL → 粘贴 → Save）。加完后再用 localhost 登录，授权完就会乖乖跳回 localhost 了。
+**修复（一步）**：把 `http://localhost:8137` 加进 **Redirect URLs**（点 Add URL → 粘贴 → Save）。加完后再用 localhost 登录，授权完就会乖乖跳回 localhost 了。
 
-> 延伸影响：如果登录被带回了线上地址，你的会话其实**已经建立成功**（Supabase 在回跳 URL 里带回了登录态），只是落在了「错误的源」上。结果是同一个 GitHub 账号的数据被写进了 `sudoku-3ss.pages.dev` 的 localStorage，而 `localhost:5173` 的 localStorage 没同步到——看着像「没登录 / 数据不对」。按上面补上 localhost 后，从哪个地址登录就落到哪个地址，数据就自洽了。
+> 延伸影响：如果登录被带回了线上地址，你的会话其实**已经建立成功**（Supabase 在回跳 URL 里带回了登录态），只是落在了「错误的源」上。结果是同一个 GitHub 账号的数据被写进了 `sudoku-3ss.pages.dev` 的 localStorage，而 `localhost:8137` 的 localStorage 没同步到——看着像「没登录 / 数据不对」。按上面补上 localhost 后，从哪个地址登录就落到哪个地址，数据就自洽了。
 >
 > 如果你**只打算让用户线上玩、自己不本地调试**，那最省事的做法是：Site URL 和 Redirect URLs 都只留 `https://sudoku-3ss.pages.dev`，并且**永远用线上地址 `https://sudoku-3ss.pages.dev` 打开游戏来登录**（不要用 localhost 登录）。这样根本不会触发回退。
 
@@ -249,7 +251,7 @@ create policy "user_data_own_row" on public.user_data
 - [ ] SQL Editor 执行了建表语句，显示 `Success`
 - [ ] （可选）GitHub OAuth App 已创建，拿到 Client ID / Secret
 - [ ] （可选）Supabase → Authentication → Providers → GitHub 已启用，填入了 Client ID / Secret
-- [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加线上地址 `https://sudoku-3ss.pages.dev`（本地调试可额外加 `http://localhost:5173`）
+- [ ] （可选）Supabase → URL Configuration 的 Site URL / Redirect URLs 已加线上地址 `https://sudoku-3ss.pages.dev`（本地调试可额外加 `http://localhost:8137`）
 - [ ] 已把 Project URL + anon key 发给我，并说「开始」（注明是否启用 GitHub）
 
 ---
