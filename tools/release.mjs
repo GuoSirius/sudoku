@@ -96,18 +96,65 @@ async function selectVersion(current) {
     { label: 'major', next: bumpVersion(current, 'major') },
   ];
   console.log(`\n当前版本：${current}`);
-  console.log('请选择发布类型：');
-  options.forEach((o, i) => {
-    console.log(`  ${i + 1}) ${o.label.padEnd(6)} ${current} → ${o.next}`);
+
+  // 非交互终端（管道 / CI）降级为编号输入，避免 raw mode 不可用导致卡死
+  if (!process.stdin.isTTY) {
+    console.log('请选择发布类型：');
+    options.forEach((o, i) => {
+      console.log(`  ${i + 1}) ${o.label.padEnd(6)} ${current} → ${o.next}`);
+    });
+    const ans = (await question('输入 1/2/3（直接回车默认 1=patch）：'))
+      .trim()
+      .toLowerCase();
+    if (ans === '2' || ans === 'minor') return 'minor';
+    if (ans === '3' || ans === 'major') return 'major';
+    return 'patch';
+  }
+
+  // 交互终端：↑/↓ 切换，Enter 确认（raw mode 监听按键）
+  console.log('请选择发布类型（↑/↓ 切换，Enter 确认）：');
+  for (let i = 0; i < options.length; i++) {
+    process.stdout.write(`  ${options[i].label.padEnd(6)} ${current} → ${options[i].next}\n`);
+  }
+  let idx = 0;
+  function draw() {
+    process.stdout.write('\x1B[3A'); // 上移 3 行回到选项区
+    for (let i = 0; i < options.length; i++) {
+      process.stdout.write('\x1B[K'); // 清除整行
+      const sel = i === idx;
+      const arrow = sel ? '\x1B[36m▶ \x1B[0m' : '  ';
+      const tag = sel ? '\x1B[1m' : '';
+      const reset = sel ? '\x1B[0m' : '';
+      process.stdout.write(`${arrow}${tag}${options[i].label.padEnd(6)}${reset} ${current} → ${options[i].next}\n`);
+    }
+  }
+  draw();
+  return new Promise((resolve) => {
+    function cleanup() {
+      process.stdin.setRawMode(false);
+      process.stdin.off('data', onKey);
+      process.stdin.pause();
+    }
+    function onKey(buf) {
+      const s = buf.toString();
+      if (s === '\x1B[A') {
+        idx = (idx - 1 + options.length) % options.length;
+        draw();
+      } else if (s === '\x1B[B') {
+        idx = (idx + 1) % options.length;
+        draw();
+      } else if (s === '\r' || s === '\n') {
+        cleanup();
+        resolve(options[idx].label);
+      } else if (s === '\x03') {
+        cleanup();
+        process.exit(0);
+      }
+    }
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on('data', onKey);
   });
-  const ans = (await question('输入 1/2/3 或 patch/minor/major（直接回车默认 patch）：'))
-    .trim()
-    .toLowerCase();
-  if (ans === '' || ans === '1' || ans === 'patch') return 'patch';
-  if (ans === '2' || ans === 'minor') return 'minor';
-  if (ans === '3' || ans === 'major') return 'major';
-  console.log('⚠️ 无效输入，默认使用 patch。');
-  return 'patch';
 }
 
 async function confirmRelease(version) {
@@ -231,11 +278,12 @@ async function main() {
     console.log('① 运行自测...\n');
     run('npm test');
 
-    await promptCommit();
-
+    // 先选版本（raw mode 箭头切换），再跑 readline 提问，避免两种 stdin 模式互相打架导致流程中断
     const pkg = await readPkg();
     const current = pkg.version;
     const level = await selectVersion(current);
+
+    await promptCommit();
 
     console.log(`\n② bump 版本号（${level}）...`);
     run(`npm version ${level} --no-git-tag-version`);

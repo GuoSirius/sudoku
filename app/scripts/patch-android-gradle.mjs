@@ -58,8 +58,10 @@ const AGP_MATRIX = [
   { agp: '8.13.2', minGradle: '8.13',   minStudio: '2025.1.3' }, // Narwhal 3 FD（AGP 8 系列封顶）
 ];
 
-// 探测不到 Android Studio 时的保守默认：Ladybug(2024.2.1) 起即可用，覆盖面最广
-const SAFE_DEFAULT_AGP = '8.7.3';
+// 探测不到 Android Studio 时的保守默认：CI（ubuntu runner 无 Android Studio）与本地未探测到时使用。
+// 必须 ≥ 8.13.0 以满足 Capacitor 8 要求，且 ≥ 8.9.1 以满足 androidx.activity/core 1.17.0 依赖。
+// AGP 8 系列封顶 8.13.2（AGP 9 要求 Gradle 9 + 破坏性变更，Capacitor 8 模板未适配）。
+const SAFE_DEFAULT_AGP = '8.13.2';
 
 const cmp = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
 
