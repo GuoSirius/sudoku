@@ -1,11 +1,11 @@
-// Supabase 跨设备同步：邮箱魔法链接登录（默认）+ 可选 GitHub 登录
+// Supabase 跨设备同步：邮箱/手机 应用内 OTP 验证码登录（免密码，PWA 通用）+ 可选 GitHub PKCE 登录
 // 设计原则：
 //  - 纯前端 PWA，通过 CDN 动态加载 supabase-js；加载失败则静默降级为纯本地。
 //  - 登录成功后从云端拉取 settings/history/leaderboard，按 id 合并（去重、取较新）回写本地。
 //  - 本地任何变动（历史/排行/设置）防抖 800ms 后整行回写云端（每用户一行，RLS 隔离）。
 //  - 未登录 / 离线 / 推送失败都不影响本地游玩，下次变动或登录再同步。
 
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ENABLE_GITHUB } from './config.js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ENABLE_GITHUB, ENABLE_PHONE } from './config.js';
 import { storage } from './storage.js';
 
 let supabase = null;
@@ -184,45 +184,95 @@ function openAccountModal() {
   body.style.display = 'flex';
   body.style.flexDirection = 'column';
   body.style.gap = '10px';
+
+  let method = 'email'; // 'email' | 'phone'
+
+  // 方式切换：邮箱 / 手机
+  const tabs = document.createElement('div');
+  tabs.className = 'seg';
+  const tabEmail = document.createElement('button');
+  tabEmail.className = 'seg-btn';
+  tabEmail.textContent = '邮箱';
+  const tabPhone = ENABLE_PHONE
+    ? (() => {
+        const b = document.createElement('button');
+        b.className = 'seg-btn';
+        b.textContent = '手机';
+        return b;
+      })()
+    : null;
+  const updateTabs = () => {
+    tabEmail.classList.toggle('active', method === 'email');
+    if (tabPhone) tabPhone.classList.toggle('active', method === 'phone');
+  };
+  tabEmail.onclick = () => {
+    method = 'email';
+    updateTabs();
+    syncInput();
+    input.focus();
+  };
+  if (tabPhone)
+    tabPhone.onclick = () => {
+      method = 'phone';
+      updateTabs();
+      syncInput();
+      input.focus();
+    };
+  tabs.appendChild(tabEmail);
+  if (tabPhone) tabs.appendChild(tabPhone);
+  body.appendChild(tabs);
+
   const input = document.createElement('input');
-  input.type = 'email';
-  input.placeholder = '输入邮箱，发送登录链接';
   input.style.cssText =
     'padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:15px';
   body.appendChild(input);
+
   const hint = document.createElement('p');
   hint.className = 'setting-hint';
-  hint.textContent = '我们会向该邮箱发送一封魔法链接，点开即可登录（免密码）。链接可能在垃圾邮件里。';
   body.appendChild(hint);
+  const syncInput = () => {
+    if (method === 'email') {
+      input.type = 'email';
+      input.placeholder = '输入邮箱，发送验证码';
+      hint.textContent = '我们会向该邮箱发送 6 位验证码，在应用内输入即可登录（免密码，不点链接）。';
+    } else {
+      input.type = 'tel';
+      input.placeholder = '手机号，如 +86 13800000000';
+      hint.textContent =
+        '我们会向该手机号发送短信验证码，在应用内输入即可登录。需 Supabase 已开启 Phone Auth 并接入 SMS 服务商。';
+    }
+  };
+  updateTabs();
+  syncInput();
 
   if (ENABLE_GITHUB) {
     const ghHint = document.createElement('p');
     ghHint.className = 'setting-hint';
     ghHint.style.marginTop = '4px';
     ghHint.innerHTML =
-      '用 GitHub 登录会与上方邮箱账号自动合并为同一人（需同一邮箱且已验证）。请确保 GitHub 邮箱已公开：GitHub → Settings → Emails → 取消勾选「Keep my email addresses private」。';
+      '用 GitHub 登录会与邮箱账号自动合并为同一人（需同一邮箱且已验证）。请确保 GitHub 邮箱已公开：GitHub → Settings → Emails → 取消勾选「Keep my email addresses private」。';
     body.appendChild(ghHint);
   }
 
+  const sendCode = async () => {
+    const val = input.value.trim();
+    if (!val) {
+      notify('请先输入' + (method === 'email' ? '邮箱' : '手机号'));
+      return;
+    }
+    closeModal();
+    const payload = method === 'email' ? { email: val } : { phone: val };
+    const { error } = await supabase.auth.signInWithOtp(payload);
+    if (error) {
+      notify('发送失败：' + error.message);
+      return;
+    }
+    notify('验证码已发送，请查收');
+    openOtpModal(method, val);
+  };
+
   const actions = [
-    {
-      label: '发送登录邮件',
-      primary: true,
-      onClick: async () => {
-        const email = input.value.trim();
-        if (!email) {
-          notify('请先输入邮箱');
-          return;
-        }
-        closeModal();
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { redirectTo: window.location.origin },
-        });
-        if (error) notify('发送失败：' + error.message);
-        else notify('登录邮件已发送，请查收');
-      },
-    },
+    { label: '发送验证码', primary: true, onClick: sendCode },
     { label: '取消', ghost: true, onClick: closeModal },
   ];
   if (ENABLE_GITHUB) {
@@ -236,11 +286,63 @@ function openAccountModal() {
           options: { redirectTo: window.location.origin },
         });
         if (error) notify('GitHub 登录失败：' + error.message);
-        // 成功会跳转 GitHub，授权后跳回 redirectTo
       },
     });
   }
   openModal('登录 / 同步', body, actions);
+}
+
+// 验证码输入步骤：应用内完成，不依赖邮件链接，PWA / 原生通用
+function openOtpModal(method, identifier) {
+  const body = document.createElement('div');
+  body.style.display = 'flex';
+  body.style.flexDirection = 'column';
+  body.style.gap = '10px';
+
+  const tip = document.createElement('p');
+  tip.className = 'setting-hint';
+  tip.textContent = '验证码已发送至 ' + identifier + '，请在应用内输入 6 位码完成登录。';
+  body.appendChild(tip);
+
+  const code = document.createElement('input');
+  code.type = 'text';
+  code.inputMode = 'numeric';
+  code.maxLength = 8;
+  code.placeholder = '6 位验证码';
+  code.style.cssText =
+    'padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:20px;letter-spacing:6px;text-align:center';
+  body.appendChild(code);
+
+  const verify = async () => {
+    const token = code.value.trim();
+    if (!/^\d{4,8}$/.test(token)) {
+      notify('请输入正确的验证码');
+      return;
+    }
+    closeModal();
+    const payload =
+      method === 'email'
+        ? { email: identifier, token, type: 'email' }
+        : { phone: identifier, token, type: 'sms' };
+    const { error } = await supabase.auth.verifyOtp(payload);
+    if (error) notify('验证失败：' + error.message);
+  };
+
+  const actions = [
+    { label: '登录', primary: true, onClick: verify },
+    {
+      label: '重新发送',
+      ghost: true,
+      onClick: async () => {
+        const payload = method === 'email' ? { email: identifier } : { phone: identifier };
+        const { error } = await supabase.auth.signInWithOtp(payload);
+        if (error) notify('发送失败：' + error.message);
+        else notify('验证码已重新发送');
+      },
+    },
+    { label: '返回', ghost: true, onClick: openAccountModal },
+  ];
+  openModal('输入验证码', body, actions);
 }
 
 // ---------------- 初始化 ----------------
@@ -258,7 +360,12 @@ export async function initSync() {
     return;
   }
   supabase = mod.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+    },
   });
 
   wrapStorage();
