@@ -2,6 +2,18 @@
 
 所有版本的变更都按时间倒序记录于此，每个版本下按提交类型分组展示。
 
+## [1.0.4] - 2026-08-13
+
+### Bug Fixes
+
+- Tauri productName 改为 Sudoku，构建安装包名去中文 ([45020ca])
+- 拆分 Release 创建与上传，tauri-action 改用 releaseId 上传避免自建 Release 权限冲突 ([82ed7be])
+- Android CI 改用 JDK 21 匹配 Capacitor8 编译源级要求 ([d96638a])
+
+### Chores
+
+- restore ([8976e51])
+
 ## [1.0.3] - 2026-08-13
 
 ### Bug Fixes
