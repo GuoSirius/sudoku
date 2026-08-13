@@ -22,13 +22,14 @@
   --given: #c2c9dd;
   --given-text: #1f2937;
   --filled-text: #4338ca;
-  --selected: #a5b4fc;
-  --peer: #e3e8fb;
-  --samenum: #c7d2fe;
+  --selected: #4f46e5;
+  --peer: #eef1fb;
+  --samenum: #cdd6fb;
   --conflict: #fecdd3;
   --wrong: #fecdd3;
-  --wrong-text: #be123c;
+  --wrong-text: #9f1239;
   --note: #475069;
+  --num-color: #4f46e5;
 }
 
 /* 深色主题 */
@@ -41,16 +42,18 @@
   --border: #2f3546;
   --cell: #1a1e29;
   --cell-hover: #232a3c;
-  --given: #3d4459;
+  --given: #424b63;
   --given-text: #f1f5f9;
   --filled-text: #a5b4fc;
-  --selected: #4338ca;
+  --selected: #4f46e5;
   --peer: #23283a;
-  --samenum: #312e81;
-  --conflict: #5b2030;
-  --wrong: #5b2030;
+  --samenum: #3a347d;
+  --conflict: #6b2233;
+  --wrong: #6b2233;
   --wrong-text: #ff8fa3;
   --note: #9aa6bc;
+  --primary-weak: #232a44;
+  --num-color: #a5b4fc;
 }
 
 * {
@@ -359,8 +362,12 @@ body {
 }
 .cell.selected {
   background: var(--selected);
+  color: #ffffff;
   box-shadow: inset 0 0 0 3px var(--primary);
   z-index: 1;
+}
+.cell.selected .notes {
+  color: rgba(255, 255, 255, 0.82);
 }
 /* 可点击（非固有、非选中、非错误）格子在桌面端悬停时给出轻微反馈 */
 .cell:not(.given):not(.selected):not(.conflict):not(.wrong):hover {
@@ -452,7 +459,7 @@ body {
   aspect-ratio: 1 / 1;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--primary);
+  color: var(--num-color);
   border-radius: var(--radius-sm);
   font-size: clamp(18px, 5.5vw, 26px);
   font-weight: 700;
@@ -472,7 +479,7 @@ body {
 .num.num-active {
   background: var(--primary-weak);
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--num-color);
 }
 .num .remain {
   position: absolute;
@@ -508,7 +515,7 @@ body {
 .tool.active {
   background: var(--primary-weak);
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--num-color);
 }
 .tool-ico {
   font-size: 18px;
