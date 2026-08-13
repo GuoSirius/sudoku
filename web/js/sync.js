@@ -144,6 +144,84 @@ async function pushNow() {
   if (error) console.warn('云端同步失败', error);
 }
 
+// ---------------- 全球排行榜 ----------------
+function getNickname() {
+  const s = storage.getSettings();
+  if (s.nickname) return s.nickname;
+  if (session && session.user) {
+    const email = session.user.email || '';
+    const name = email.split('@')[0];
+    return name || '玩家' + (session.user.id || '').slice(0, 4);
+  }
+  return '匿名玩家' + storage.getDeviceId().slice(-4);
+}
+
+// 上传一条完成记录到全球榜（仅当 supabase 已就绪）。失败静默，不影响本地游玩。
+export async function submitGlobalScore(rec) {
+  if (!supabase) return;
+  const deviceId = storage.getDeviceId();
+  const userId = session && session.user ? session.user.id : null;
+  const score = (rec && rec.score) || 0;
+  try {
+    const { error } = await supabase.rpc('submit_global_score', {
+      p_device_id: deviceId,
+      p_user_id: userId,
+      p_nickname: getNickname(),
+      p_difficulty: rec.difficulty,
+      p_duration_ms: Math.round(rec.durationMs),
+      p_mistakes: rec.mistakes || 0,
+      p_hints_used: rec.hintsUsed || 0,
+      p_score: Math.round(score),
+    });
+    if (error) console.warn('上传全球榜失败', error);
+  } catch (e) {
+    console.warn('上传全球榜异常', e);
+  }
+}
+
+// 拉取全球榜；difficulty 为空字符串表示全难度综合。缓存 60 秒避免频繁请求。
+export async function fetchGlobalLeaderboard({ difficulty = '', limit = 50 } = {}) {
+  const cached = storage.getGlobalLeaderboard();
+  if (cached && cached.cachedAt > Date.now() - 60000) {
+    const list = filterGlobalByDifficulty(cached.list, difficulty);
+    if (list.length) return list;
+  }
+  if (!supabase) return [];
+  try {
+    let query = supabase
+      .from('global_leaderboard')
+      .select('nickname, difficulty, duration_ms, mistakes, hints_used, score, played_at')
+      .order('score', { ascending: false })
+      .limit(limit * 4);
+    if (difficulty) query = query.eq('difficulty', difficulty);
+    const { data, error } = await query;
+    if (error) {
+      console.warn('拉取全球榜失败', error);
+      return filterGlobalByDifficulty(cached.list || [], difficulty);
+    }
+    // 按 device_id/user_id 去重，取每个人每难度的最好成绩
+    const map = new Map();
+    for (const r of data || []) {
+      const key = (r.user_id || r.device_id || '') + ':' + r.difficulty;
+      const prev = map.get(key);
+      if (!prev || r.score > prev.score || (r.score === prev.score && r.duration_ms < prev.duration_ms)) {
+        map.set(key, r);
+      }
+    }
+    const list = [...map.values()].sort((a, b) => b.score - a.score || a.duration_ms - b.duration_ms).slice(0, limit);
+    storage.setGlobalLeaderboard(list);
+    return list;
+  } catch (e) {
+    console.warn('拉取全球榜异常', e);
+    return filterGlobalByDifficulty(cached.list || [], difficulty);
+  }
+}
+
+function filterGlobalByDifficulty(list, difficulty) {
+  if (!difficulty) return list || [];
+  return (list || []).filter((r) => r.difficulty === difficulty);
+}
+
 // 包装本地写操作，触发防抖回写（登录后才真正推送）
 function wrapStorage() {
   const wrap = (name) => {

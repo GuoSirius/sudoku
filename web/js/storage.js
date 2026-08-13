@@ -6,6 +6,8 @@ const KEYS = {
   current: 'sudoku:current',
   history: 'sudoku:history',
   leaderboard: 'sudoku:leaderboard',
+  globalLeaderboard: 'sudoku:globalLeaderboard',
+  deviceId: 'sudoku:deviceId',
 };
 
 function read(key, fallback) {
@@ -85,6 +87,24 @@ export const storage = {
   },
   setLeaderboard(arr) {
     write(KEYS.leaderboard, arr || []);
+  },
+
+  // 设备匿名 ID：用于全球榜匿名身份，登录后可与 user_id 合并
+  getDeviceId() {
+    let id = read(KEYS.deviceId, '');
+    if (!id) {
+      id = 'd_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      write(KEYS.deviceId, id);
+    }
+    return id;
+  },
+
+  // 全球榜本地缓存（最近拉取结果）
+  getGlobalLeaderboard() {
+    return read(KEYS.globalLeaderboard, { cachedAt: 0, list: [] });
+  },
+  setGlobalLeaderboard(list) {
+    write(KEYS.globalLeaderboard, { cachedAt: Date.now(), list: list || [] });
   },
 
   clearHistory() {

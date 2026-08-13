@@ -4,7 +4,7 @@ import { storage } from './storage.js';
 import { DIFFICULTIES, formatTime } from './sudoku.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
-import { initSync } from './sync.js';
+import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
 
 const $ = (id) => document.getElementById(id);
@@ -200,7 +200,7 @@ function restoreScreen() {
 }
 
 // ---------------- 弹窗 / Toast ----------------
-function showModal({ title, body, actions = [], dismissable = true }) {
+function showModal({ title, body, actions = [], dismissable = true, actionsClass = '' }) {
   const root = $('modal-root');
   root.innerHTML = '';
   const m = document.createElement('div');
@@ -216,7 +216,7 @@ function showModal({ title, body, actions = [], dismissable = true }) {
     m.appendChild(body);
   }
   const act = document.createElement('div');
-  act.className = 'modal-actions';
+  act.className = 'modal-actions' + (actionsClass ? ' ' + actionsClass : '');
   actions.forEach((a) => {
     const b = document.createElement('button');
     b.className =
@@ -625,6 +625,8 @@ function onWin() {
     won: true,
     date: Date.now(),
   });
+  // 异步上传全球榜（失败静默）
+  submitGlobalScore({ ...rec, score: compositeScore(rec) });
   storage.clearCurrent();
   showWinModal(rec);
 }
@@ -642,10 +644,11 @@ function showWinModal(rec) {
   showModal({
     title: isNewBest(rec) ? '🎉 新纪录！' : '恭喜完成',
     body,
+    actionsClass: 'win-actions',
     actions: [
+      { label: '再来一局', primary: true, onClick: () => newGameFlow() },
       { label: '查看复盘', ghost: true, onClick: () => { closeModal(); openReplay(rec); } },
       { label: '查看排行榜', ghost: true, onClick: () => { closeModal(); showScreen('leaderboard'); } },
-      { label: '再来一局', primary: true, onClick: () => newGameFlow() },
     ],
   });
 }
@@ -866,9 +869,65 @@ function compositeScore(rec) {
   return Math.round(base * timeFactor * accuracyFactor);
 }
 
-let lbMode = 'fast'; // 'fast' 每难度最快 | 'score' 难度分 | 'composite' 综合分
+let lbMode = 'fast'; // 'fast' 每难度最快 | 'score' 难度分 | 'composite' 综合分 | 'global' 全球榜
+let lbGlobalDiff = ''; // '' 全难度，或难度 id
 
-function renderLeaderboard() {
+function computePersonalStats(lb, history) {
+  const won = lb.length;
+  const total = history.length || won;
+  const winRate = total ? Math.round((won / total) * 100) : 0;
+  const bestMs = won ? Math.min(...lb.map((r) => r.durationMs)) : 0;
+  const avgMs = won ? Math.round(lb.reduce((s, r) => s + r.durationMs, 0) / won) : 0;
+  const avgMistakes = won ? (lb.reduce((s, r) => s + r.mistakes, 0) / won).toFixed(1) : '0';
+  const avgHints = won ? (lb.reduce((s, r) => s + (r.hintsUsed || 0), 0) / won).toFixed(1) : '0';
+  const bestByDiff = {};
+  DIFFICULTIES.forEach((d) => {
+    const rows = lb.filter((r) => r.difficulty === d.id);
+    if (rows.length) bestByDiff[d.id] = Math.min(...rows.map((r) => r.durationMs));
+  });
+  const streak = (() => {
+    let max = 0;
+    let cur = 0;
+    for (const r of history.slice().reverse()) {
+      if (r.won) {
+        cur++;
+        max = Math.max(max, cur);
+      } else {
+        cur = 0;
+      }
+    }
+    return max;
+  })();
+  return { won, total, winRate, bestMs, avgMs, avgMistakes, avgHints, bestByDiff, streak };
+}
+
+function renderPersonalStats(lb, history) {
+  const s = computePersonalStats(lb, history);
+  const wrap = document.createElement('div');
+  wrap.className = 'lb-section';
+  wrap.innerHTML = `<h3>个人战绩</h3>`;
+  const grid = document.createElement('div');
+  grid.className = 'lb-stats-grid';
+  grid.innerHTML = `
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.total}</div><div class="lb-stat-label">总局数</div></div>
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.winRate}%</div><div class="lb-stat-label">胜率</div></div>
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.won}</div><div class="lb-stat-label">完成局</div></div>
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.bestMs ? formatTime(s.bestMs) : '-'}</div><div class="lb-stat-label">最快用时</div></div>
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.avgMs ? formatTime(s.avgMs) : '-'}</div><div class="lb-stat-label">平均用时</div></div>
+    <div class="lb-stat-card"><div class="lb-stat-val">${s.streak}</div><div class="lb-stat-label">连胜纪录</div></div>
+  `;
+  const diffRow = document.createElement('div');
+  diffRow.className = 'lb-best-row';
+  diffRow.innerHTML = DIFFICULTIES.map((d) => {
+    const t = s.bestByDiff[d.id];
+    return `<div class="lb-best-item"><span class="tag d-${d.id}">${d.label}</span><span class="lb-best-time">${t ? formatTime(t) : '-'}</span></div>`;
+  }).join('');
+  wrap.appendChild(grid);
+  wrap.appendChild(diffRow);
+  return wrap;
+}
+
+async function renderLeaderboard() {
   // 排名维度切换
   const tabs = $('lb-tabs');
   if (tabs) {
@@ -877,6 +936,7 @@ function renderLeaderboard() {
       ['fast', '最快用时'],
       ['score', '难度分'],
       ['composite', '综合分'],
+      ['global', '全球榜'],
     ].forEach(([m, label]) => {
       const b = document.createElement('button');
       b.className = 'seg-btn' + (m === lbMode ? ' active' : '');
@@ -891,14 +951,75 @@ function renderLeaderboard() {
 
   const body = $('leaderboard-body');
   body.innerHTML = '';
+
+  // 全球榜：异步拉取，与个人本地数据无关
+  if (lbMode === 'global') {
+    body.innerHTML = '<div class="empty">正在加载全球榜…</div>';
+    const list = await fetchGlobalLeaderboard({ difficulty: lbGlobalDiff, limit: 50 });
+    body.innerHTML = '';
+
+    // 难度筛选
+    const diffSeg = document.createElement('div');
+    diffSeg.className = 'seg lb-diff-seg';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'seg-btn' + (lbGlobalDiff === '' ? ' active' : '');
+    allBtn.textContent = '全部';
+    allBtn.onclick = () => { lbGlobalDiff = ''; renderLeaderboard(); };
+    diffSeg.appendChild(allBtn);
+    DIFFICULTIES.forEach((d) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (lbGlobalDiff === d.id ? ' active' : '');
+      b.textContent = d.label;
+      b.onclick = () => { lbGlobalDiff = d.id; renderLeaderboard(); };
+      diffSeg.appendChild(b);
+    });
+    const sec = document.createElement('div');
+    sec.className = 'lb-section';
+    sec.appendChild(diffSeg);
+
+    if (!list || !list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = '暂无全球榜数据，完成一局即可上榜';
+      sec.appendChild(empty);
+      body.appendChild(sec);
+      return;
+    }
+
+    const title = document.createElement('h3');
+    title.textContent = '全球榜 · ' + (lbGlobalDiff ? (DIFFICULTIES.find((x) => x.id === lbGlobalDiff) || {}).label || lbGlobalDiff : '全难度综合');
+    sec.appendChild(title);
+    const table = document.createElement('table');
+    table.className = 'lb-table';
+    table.innerHTML = '<thead><tr><th>#</th><th>玩家</th><th>难度</th><th>综合分</th><th>用时</th><th>错误</th><th>提示</th></tr></thead>';
+    const tb = document.createElement('tbody');
+    list.forEach((r, i) => {
+      const d = DIFFICULTIES.find((x) => x.id === r.difficulty) || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="lb-rank ${i === 0 ? 'top' : ''}">${i + 1}</td>
+        <td class="lb-nick">${escapeHtml(r.nickname || '匿名玩家')}</td>
+        <td><span class="tag d-${r.difficulty}">${d.label || r.difficulty}</span></td>
+        <td><b>${r.score}</b></td>
+        <td>${formatTime(r.duration_ms)}</td>
+        <td>${r.mistakes || 0}</td>
+        <td>${r.hints_used || 0}</td>`;
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    sec.appendChild(table);
+    body.appendChild(sec);
+    return;
+  }
+
   const lb = storage.getLeaderboard().filter((r) => r.won);
   if (!lb.length) {
     body.innerHTML = '<div class="empty">还没有完成的对局，加油！</div>';
     return;
   }
 
-  // 模式一：每难度最快用时 Top10（原行为）
+  // 模式一：每难度最快用时 Top10（原行为）+ 顶部个人统计
   if (lbMode === 'fast') {
+    body.appendChild(renderPersonalStats(lb, storage.getHistory()));
     DIFFICULTIES.forEach((d) => {
       const rows = lb
         .filter((r) => r.difficulty === d.id)
@@ -963,6 +1084,14 @@ function renderLeaderboard() {
   table.appendChild(tb);
   sec.appendChild(table);
   body.appendChild(sec);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ---------------- 设置 ----------------
