@@ -928,3 +928,110 @@ body {
     font-size: 16px;
   }
 }
+
+/* ============ 摸鱼模式（迷你小窗） ============ */
+/* ?mini=1 或点「摸鱼小窗」按钮：隐藏头部/统计/提示，只留棋盘+数字盘，强制暗色，方便角落摸鱼 */
+body.mini #app {
+  max-width: 360px;
+}
+body.mini .appbar {
+  display: none;
+}
+body.mini .game-top {
+  padding: 6px 2px;
+}
+body.mini .badge,
+body.mini .game-stats {
+  display: none;
+}
+body.mini .pad-hint {
+  display: none;
+}
+body.mini .board-wrap {
+  margin: 6px 0;
+}
+body.mini .game-actions {
+  margin-top: 8px;
+}
+body.mini .game-actions .btn {
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+/* ============ 老板键：一键伪装成「在工作」 ============ */
+#boss-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: "SF Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+  flex-direction: column;
+}
+body.boss #app {
+  display: none;
+}
+body.boss #boss-screen {
+  display: flex;
+}
+.boss-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #3a3a3a;
+  font-size: 12px;
+  color: #9a9a9a;
+}
+.boss-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #5a5a5a;
+}
+.boss-dot:nth-child(1) {
+  background: #ff5f56;
+}
+.boss-dot:nth-child(2) {
+  background: #ffbd2e;
+}
+.boss-dot:nth-child(3) {
+  background: #27c93f;
+}
+.boss-file {
+  margin-left: 8px;
+}
+.boss-code {
+  margin: 0;
+  padding: 18px 20px;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre;
+  overflow: auto;
+  flex: 1;
+  color: #cfcfcf;
+}
+.boss-code .cm {
+  color: #6a9955;
+}
+.boss-code .kw {
+  color: #569cd6;
+}
+.boss-code .st {
+  color: #ce9178;
+}
+.boss-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: #d4d4d4;
+  vertical-align: text-bottom;
+  animation: bossBlink 1s steps(1) infinite;
+}
+@keyframes bossBlink {
+  50% {
+    opacity: 0;
+  }
+}

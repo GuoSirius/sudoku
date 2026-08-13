@@ -34,6 +34,24 @@ function applyTheme(theme) {
   }
 }
 
+// 摸鱼：打开一个独立的小窗口（?mini=1），可拖到屏幕角落，强制暗色、只显示棋盘+数字盘
+function openMiniWindow() {
+  const base = typeof location !== 'undefined' ? location.pathname : '/';
+  const qs = typeof location !== 'undefined' && location.search ? location.search + '&' : '?';
+  const url = base + qs + 'mini=1';
+  const w = window.open(
+    url,
+    'sudoku_mini',
+    'width=380,height=680,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+  );
+  if (!w) toast('弹窗被拦截，请允许本站点弹出窗口');
+}
+
+// 老板键：在游戏与「伪装工作界面」之间瞬间切换
+function toggleBoss() {
+  document.body.classList.toggle('boss');
+}
+
 // ---------------- 路由 ----------------
 function showScreen(name) {
   SCREENS.forEach((s) => $('screen-' + s).classList.toggle('hidden', s !== name));
@@ -841,6 +859,8 @@ function moveSelection(key) {
   renderGame();
 }
 function onKey(e) {
+  const b = typeof document !== 'undefined' ? document.body : null;
+  if (b && b.classList.contains('boss')) return;
   if ($('screen-game').classList.contains('hidden') || !game) return;
   if (e.key >= '1' && e.key <= '9') {
     inputNumber(parseInt(e.key, 10), e.ctrlKey || ctrlHeld);
@@ -907,6 +927,7 @@ function init() {
   };
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
+  $('btn-mini').onclick = openMiniWindow;
 
   $('rp-first').onclick = () => {
     stopReplay();
@@ -968,6 +989,13 @@ function init() {
   };
 
   document.addEventListener('keydown', onKey);
+  // 老板键：按 ` 键在「游戏」与「伪装工作界面」间瞬间切换（任何页面/迷你窗都生效）
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Backquote' || e.key === '`') {
+      e.preventDefault();
+      toggleBoss();
+    }
+  });
   // PC 组合键：按住 Ctrl 默认笔记模式（松开复位）
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Control') ctrlHeld = true;
@@ -985,6 +1013,16 @@ function init() {
   registerPWA();
   initSync(); // 异步：非浏览器/离线时自动降级为纯本地，不阻塞游戏
   restoreScreen();
+  // 摸鱼迷你模式：?mini=1 时强制暗色、只留棋盘+数字盘，并自动进入对局
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
+  if (q.get('mini') === '1') {
+    document.body.classList.add('mini');
+    applyTheme('dark');
+    if ($('screen-game').classList.contains('hidden')) {
+      startNewGame(storage.getSettings().difficulty || 'easy');
+    }
+    toast('摸鱼模式：按 ` 键一键隐藏 / 恢复');
+  }
 }
 
 init();

@@ -62,6 +62,7 @@
               <button class="btn btn-ghost" id="btn-leaderboard">排行榜</button>
             </div>
             <button class="btn btn-ghost btn-block" id="btn-settings">设置</button>
+            <button class="btn btn-ghost btn-block" id="btn-mini">🪟 摸鱼小窗（独立窗口）</button>
             <p class="menu-foot" id="menu-stat"></p>
           </div>
         </section>
@@ -170,6 +171,27 @@
 
       <div id="modal-root"></div>
       <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <!-- 老板键伪装层：按 ` 键在游戏与「工作界面」间瞬间切换 -->
+    <div id="boss-screen" aria-hidden="true">
+      <div class="boss-bar">
+        <span class="boss-dot"></span><span class="boss-dot"></span><span class="boss-dot"></span>
+        <span class="boss-file">quarterly_analysis.py — 编辑中</span>
+      </div>
+      <pre class="boss-code"><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> datetime <span class="kw">import</span> date
+
+df = pd.read_csv(<span class="st">"sales_q3.csv"</span>)
+df[<span class="st">"month"</span>] = pd.to_datetime(df[<span class="st">"date"</span>]).dt.month
+pivot = df.pivot_table(index=<span class="st">"region"</span>, values=<span class="st">"amount"</span>, aggfunc=<span class="st">"sum"</span>)
+
+<span class="cm"># 按金额降序取 Top 10 区域</span>
+top = pivot.sort_values(<span class="st">"amount"</span>, ascending=<span class="kw">False</span>).head(<span class="kw">10</span>)
+<span class="kw">print</span>(top)
+
+<span class="cm"># TODO: 核对 9 月异常波动，下周例会同步</span>
+<span class="boss-cursor"></span></code></pre>
     </div>
 
     <script type="module" src="js/main.js"></script>
