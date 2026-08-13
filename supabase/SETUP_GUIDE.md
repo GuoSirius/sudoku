@@ -1,7 +1,7 @@
 # 数独 Supabase 同步：部署与排坑指南
 
 > 目标：在 Supabase 上准备好数据库 + 登录，拿到 **Project URL** 和 **Publishable/anon key**。  
-> 推荐：**邮箱魔法链接为主，GitHub 可选**。邮箱零配置；GitHub 需要额外 OAuth App。
+> 推荐：**邮箱 OTP 验证码（应用内输码）为主，GitHub 可选**。两者均免密码、浏览器/PWA/原生通用。手机号因需付费 SMS，默认关闭。
 
 ---
 
@@ -68,9 +68,21 @@ create policy "user_data_own_row" on public.user_data
 
 ## 4. 配置登录
 
-### 邮箱登录（默认已开启，无需配置）
+### 邮箱登录（应用内 OTP 验证码，默认开启）
 
-### GitHub 登录（可选）
+登录流程已从「魔法链接」改为**应用内 6 位验证码**：用户输入邮箱 → 点发送 → 在应用内输入收到的 6 位码完成登录。全程不跳外部链接，**规避 iOS 已装 PWA 点邮件链接丢失会话**的问题。
+
+需要做的配置：
+
+1. **启用 Email provider**：Authentication → Providers → Email，确保 **Enable**（默认开）。OTP 验证码由 Supabase 通过邮件发送。
+2. **（生产必做）配置自定义 SMTP**：Supabase 自带邮件服务有发送限额且标注「请勿用于生产」。正式上线前请在 Authentication → Email → 自定义 SMTP 接入自己的邮件服务（如 Postmark / SendGrid / 企业邮箱），否则可能收不到验证码或被限流。
+3. **邮件模板含验证码**：OTP 邮件复用「Magic Link / Sign In」模板，必须包含 `{{ .Token }}`（6 位码）。可在 Authentication → Email Templates 确认模板含该变量（默认即有）。
+
+> 不依赖 Redirect URL（验证码在应用内输入），但 Email provider 与 SMTP 必须可用。
+
+### GitHub 登录（可选，PKCE）
+
+采用 **PKCE** 流程（`flowType: 'pkce'`），授权后回跳站点 origin，由前端在应用内用 `?code=` 换会话，**浏览器/PWA/原生三端共用**。
 
 1. **GitHub 创建 OAuth App**  
    GitHub → Settings → Developer settings → OAuth Apps → **New OAuth App**
@@ -88,7 +100,18 @@ create policy "user_data_own_row" on public.user_data
      - `https://sudoku-3ss.pages.dev`（必加）
      - `http://localhost:8137`（本地调试才加）
 
-> 本地端口是 **8137**（`tools/serve.mjs` 默认），不是 5173。
+> 本地端口是 **8137**（`tools/serve.mjs` 默认），不是 5173。PKCE 回跳同样走上面的 Redirect URLs。
+
+### 手机号登录（默认关闭，付费）
+
+当前 `js/config.js` 中 `ENABLE_PHONE = false`，登录界面不显示手机入口。原因：Supabase Phone Auth 需接入 SMS 服务商（Twilio 等，**按条计费**），暂不划算。
+
+如后续要启用：
+1. `ENABLE_PHONE = true`
+2. Supabase → Authentication → Providers → Phone，开启并配置 SMS 服务商
+3. 前端 `signInWithOtp({phone})` + `verifyOtp({type:'sms'})` 逻辑已就绪，无需改代码
+
+
 
 ---
 
@@ -111,15 +134,15 @@ create policy "user_data_own_row" on public.user_data
 **原因**：没执行第 3 步建表。  
 **修复**：跑 `npm run deploy:schema` 或在 SQL Editor 执行建表 SQL。
 
-### 坑 4：邮箱魔法链接收不到
+### 坑 4：邮箱验证码收不到
 
-免费层邮件可能进垃圾邮件；若长期收不到，可在 Supabase → Authentication → Email 配置自定义 SMTP。
+免费层邮件可能进垃圾邮件或被限流；**生产环境务必在 Supabase → Authentication → Email 配置自定义 SMTP**，否则可能长期收不到验证码。同时确认 Email Templates 的 Sign In 模板含 `{{ .Token }}`。
 
 ---
 
 ## 6. 验证跨设备同步
 
 1. 部署新版到 `sudoku-3ss.pages.dev`（或本地 `npm run dev`）
-2. 打开网站 → 点顶栏 👤 → 输入邮箱 → 点魔法链接登录
+2. 打开网站 → 点顶栏 👤 → 输入邮箱 → 点「发送验证码」→ 在应用内输入收到的 6 位码
 3. 玩一局 / 改设置
 4. 换设备或清掉本地存储后，用同一账号登录 → 历史 / 排行 / 设置应自动拉回
