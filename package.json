@@ -8,6 +8,10 @@
     "dev": "node tools/serve.mjs",
     "test": "node tools/test-engine.mjs && node tools/test-game.mjs && node tools/test-dom.mjs && node tools/test-restore.mjs",
     "deploy": "npx wrangler pages deploy . --project-name=sudoku",
+    "deploy:schema": "node tools/deploy-schema.mjs",
     "gen:icons": "python tools/gen_icons.py"
+  },
+  "devDependencies": {
+    "pg": "^8.23.0"
   }
 }

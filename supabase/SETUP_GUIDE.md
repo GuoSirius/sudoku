@@ -140,6 +140,14 @@ create policy "user_data_own_row" on public.user_data
    - 开启了 **RLS 行级安全**：用户只能读写自己的那一行，别人看不到你的数据；
    - 复盘数据很轻（每条只存「题目 + 走子序列」，约 1–2KB），几百条也就几百 KB，完全无压力。
 
+> 🚀 **嫌手动粘贴麻烦？用一键脚本**：在项目根目录执行下面一行即可自动建表（脚本读取 `supabase/schema.sql` 并直连 Supabase Postgres 执行，幂等可重复跑）：
+> ```bash
+> SUPABASE_DB_URL="postgresql://postgres:<密码>@db.oafefnbyzajzdejelhsw.supabase.co:5432/postgres" npm run deploy:schema
+> ```
+> - 连接串在 Supabase → **Settings → Database → Connection string**（URI 格式）复制；
+> - 首次需先 `npm install pg`（脚本在 `tools/deploy-schema.mjs`）；
+> - 宝塔/国内网络访问 Supabase 数据库 Occasionally 偏慢，多试一次即可。
+
 ---
 
 ## 4. （可选）配置 GitHub 登录
