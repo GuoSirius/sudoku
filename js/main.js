@@ -217,9 +217,10 @@ function renderPad() {
   const wrap = $('pad-numbers');
   wrap.innerHTML = '';
   const rem = game.remainingByDigit();
+  const selVal = game.selected != null ? game.cells[game.selected] : 0;
   for (let n = 1; n <= 9; n++) {
     const b = document.createElement('button');
-    b.className = 'num' + (rem[n] === 0 ? ' done' : '');
+    b.className = 'num' + (rem[n] === 0 ? ' done' : '') + (n === selVal ? ' num-active' : '');
     b.innerHTML = `${n}<span class="remain">${rem[n]}</span>`;
     b.addEventListener('click', (e) => {
       if (!game || game.selected == null) {

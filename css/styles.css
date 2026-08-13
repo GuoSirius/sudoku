@@ -18,16 +18,17 @@
   --muted: #5d6478;
   --border: #d5d9e6;
   --cell: #ffffff;
-  --given: #b8c0d8;
-  --given-text: #1e2233;
+  --cell-hover: #eef1f8;
+  --given: #c2c9dd;
+  --given-text: #1f2937;
   --filled-text: #4338ca;
   --selected: #a5b4fc;
-  --peer: #e0e7ff;
+  --peer: #e3e8fb;
   --samenum: #c7d2fe;
   --conflict: #fecdd3;
   --wrong: #fecdd3;
   --wrong-text: #be123c;
-  --note: #5d6478;
+  --note: #475069;
 }
 
 /* 深色主题 */
@@ -39,6 +40,7 @@
   --muted: #8e9aaf;
   --border: #2f3546;
   --cell: #1a1e29;
+  --cell-hover: #232a3c;
   --given: #3d4459;
   --given-text: #f1f5f9;
   --filled-text: #a5b4fc;
@@ -48,7 +50,7 @@
   --conflict: #5b2030;
   --wrong: #5b2030;
   --wrong-text: #ff8fa3;
-  --note: #8e9aaf;
+  --note: #9aa6bc;
 }
 
 * {
@@ -319,6 +321,11 @@ body {
   cursor: pointer;
   padding: 0;
   font-family: inherit;
+  line-height: 1;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+  overflow: hidden;
   transition: background 0.12s;
   user-select: none;
 }
@@ -351,8 +358,12 @@ body {
 }
 .cell.selected {
   background: var(--selected);
-  color: var(--text);
-  box-shadow: inset 0 0 0 2px var(--primary);
+  box-shadow: inset 0 0 0 3px var(--primary);
+  z-index: 1;
+}
+/* 可点击（非固有、非选中、非错误）格子在桌面端悬停时给出轻微反馈 */
+.cell:not(.given):not(.selected):not(.conflict):not(.wrong):hover {
+  background: var(--cell-hover);
 }
 .cell.conflict,
 .cell.wrong {
@@ -361,11 +372,11 @@ body {
 }
 .cell .notes {
   position: absolute;
-  inset: 3px;
+  inset: 2px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  font-size: clamp(11px, 3.2vw, 15px);
+  font-size: 0.4em;
   font-weight: 700;
   color: var(--note);
   pointer-events: none;
@@ -376,6 +387,8 @@ body {
   line-height: 1;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  overflow: hidden;
   pointer-events: auto;
   cursor: pointer;
   border-radius: 3px;
@@ -454,6 +467,11 @@ body {
   color: var(--muted);
   opacity: 0.45;
   pointer-events: none;
+}
+.num.num-active {
+  background: var(--primary-weak);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 .num .remain {
   position: absolute;
