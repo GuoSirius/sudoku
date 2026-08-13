@@ -29,26 +29,29 @@ function notify(msg) {
   notify._t = setTimeout(() => t.classList.add('hidden'), 1800);
 }
 
-function openModal(title, bodyEl, actions) {
+function openModal(title, bodyEl, actions, opts = {}) {
   const root = document.getElementById('modal-root');
   if (!root) return;
   root.innerHTML = '';
   const m = document.createElement('div');
-  m.className = 'modal';
+  m.className = 'modal' + (opts.className ? ' ' + opts.className : '');
   const h = document.createElement('h3');
   h.textContent = title;
   m.appendChild(h);
   if (bodyEl) m.appendChild(bodyEl);
-  const act = document.createElement('div');
-  act.className = 'modal-actions';
-  (actions || []).forEach((a) => {
-    const b = document.createElement('button');
-    b.className = 'btn' + (a.primary ? ' btn-primary' : ' btn-ghost');
-    b.textContent = a.label;
-    b.onclick = () => a.onClick && a.onClick();
-    act.appendChild(b);
-  });
-  if (actions && actions.length) m.appendChild(act);
+  if (actions && actions.length) {
+    const act = document.createElement('div');
+    act.className = 'modal-actions' + (opts.actionClass ? ' ' + opts.actionClass : '');
+    actions.forEach((a) => {
+      const b = document.createElement('button');
+      b.className = 'btn' + (a.primary ? ' btn-primary' : a.danger ? ' btn-danger-ghost' : ' btn-ghost');
+      if (a.className) b.className += ' ' + a.className;
+      b.textContent = a.label;
+      b.onclick = () => a.onClick && a.onClick();
+      act.appendChild(b);
+    });
+    m.appendChild(act);
+  }
   root.appendChild(m);
   root.classList.add('show');
   root.onclick = (e) => e.target === root && closeModal();
@@ -187,78 +190,62 @@ function openAccountModal() {
     return;
   }
   const body = document.createElement('div');
-  body.style.display = 'flex';
-  body.style.flexDirection = 'column';
-  body.style.gap = '10px';
+  body.className = 'auth-form';
 
   let method = 'email'; // 'email' | 'phone'
 
-  // 方式切换：邮箱 / 手机
-  const tabs = document.createElement('div');
-  tabs.className = 'seg';
-  const tabEmail = document.createElement('button');
-  tabEmail.className = 'seg-btn';
-  tabEmail.textContent = '邮箱';
-  const tabPhone = ENABLE_PHONE
-    ? (() => {
-        const b = document.createElement('button');
-        b.className = 'seg-btn';
-        b.textContent = '手机';
-        return b;
-      })()
-    : null;
-  const updateTabs = () => {
-    tabEmail.classList.toggle('active', method === 'email');
-    if (tabPhone) tabPhone.classList.toggle('active', method === 'phone');
-  };
-  tabEmail.onclick = () => {
-    method = 'email';
-    updateTabs();
-    syncInput();
-    input.focus();
-  };
-  if (tabPhone)
-    tabPhone.onclick = () => {
-      method = 'phone';
-      updateTabs();
-      syncInput();
-      input.focus();
+  // 若同时开启手机，显示分段切换；当前手机关闭，只保留 email 模式，界面更干净
+  if (ENABLE_PHONE) {
+    const tabs = document.createElement('div');
+    tabs.className = 'seg auth-seg';
+    const makeTab = (label, m) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (method === m ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        method = m;
+        Array.from(tabs.children).forEach((c) => c.classList.toggle('active', c === b));
+        syncInput();
+        input.focus();
+      };
+      return b;
     };
-  tabs.appendChild(tabEmail);
-  if (tabPhone) tabs.appendChild(tabPhone);
-  body.appendChild(tabs);
+    tabs.appendChild(makeTab('邮箱', 'email'));
+    tabs.appendChild(makeTab('手机', 'phone'));
+    body.appendChild(tabs);
+  }
 
+  const field = document.createElement('label');
+  field.className = 'auth-field';
+  const fieldLabel = document.createElement('span');
+  fieldLabel.className = 'auth-label';
+  fieldLabel.textContent = '邮箱';
   const input = document.createElement('input');
-  input.style.cssText =
-    'padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:15px';
-  body.appendChild(input);
+  input.className = 'auth-input';
+  input.type = 'email';
+  input.placeholder = 'your@email.com';
+  input.addEventListener('keydown', (e) => e.key === 'Enter' && sendCode());
+  field.appendChild(fieldLabel);
+  field.appendChild(input);
+  body.appendChild(field);
 
   const hint = document.createElement('p');
-  hint.className = 'setting-hint';
+  hint.className = 'auth-hint';
   body.appendChild(hint);
   const syncInput = () => {
     if (method === 'email') {
+      fieldLabel.textContent = '邮箱';
       input.type = 'email';
-      input.placeholder = '输入邮箱，发送验证码';
-      hint.textContent = '我们会向该邮箱发送 6 位验证码，在应用内输入即可登录（免密码，不点链接）。';
+      input.placeholder = 'your@email.com';
+      hint.textContent = '验证码会发到这个邮箱，在应用内输入即可登录。';
     } else {
+      fieldLabel.textContent = '手机号';
       input.type = 'tel';
-      input.placeholder = '手机号，如 +86 13800000000';
-      hint.textContent =
-        '我们会向该手机号发送短信验证码，在应用内输入即可登录。需 Supabase 已开启 Phone Auth 并接入 SMS 服务商。';
+      input.placeholder = '+86 13800000000';
+      hint.textContent = '短信验证码会发到这个手机号。';
     }
   };
-  updateTabs();
   syncInput();
-
-  if (ENABLE_GITHUB) {
-    const ghHint = document.createElement('p');
-    ghHint.className = 'setting-hint';
-    ghHint.style.marginTop = '4px';
-    ghHint.innerHTML =
-      '用 GitHub 登录会与邮箱账号自动合并为同一人（需同一邮箱且已验证）。请确保 GitHub 邮箱已公开：GitHub → Settings → Emails → 取消勾选「Keep my email addresses private」。';
-    body.appendChild(ghHint);
-  }
 
   const sendCode = async () => {
     const val = input.value.trim();
@@ -277,48 +264,67 @@ function openAccountModal() {
     openOtpModal(method, val);
   };
 
-  const actions = [
-    { label: '发送验证码', primary: true, onClick: sendCode },
-    { label: '取消', ghost: true, onClick: closeModal },
-  ];
+  const actions = document.createElement('div');
+  actions.className = 'auth-actions';
+
+  const btnSend = document.createElement('button');
+  btnSend.className = 'btn btn-primary btn-block';
+  btnSend.textContent = '发送验证码';
+  btnSend.onclick = sendCode;
+  actions.appendChild(btnSend);
+
   if (ENABLE_GITHUB) {
-    actions.unshift({
-      label: '用 GitHub 登录',
-      primary: false,
-      onClick: async () => {
-        closeModal();
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'github',
-          options: { redirectTo: window.location.origin },
-        });
-        if (error) notify('GitHub 登录失败：' + error.message);
-      },
-    });
+    const btnGh = document.createElement('button');
+    btnGh.className = 'btn btn-ghost btn-block';
+    btnGh.textContent = '用 GitHub 登录';
+    btnGh.onclick = async () => {
+      closeModal();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) notify('GitHub 登录失败：' + error.message);
+    };
+    actions.appendChild(btnGh);
+
+    const ghHint = document.createElement('p');
+    ghHint.className = 'auth-hint auth-hint-center';
+    ghHint.innerHTML =
+      'GitHub 邮箱需与上方邮箱一致且已公开，才会自动合并为同一账号。';
+    actions.appendChild(ghHint);
   }
-  openModal('登录 / 同步', body, actions);
+
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'auth-link';
+  btnCancel.textContent = '取消';
+  btnCancel.onclick = closeModal;
+  actions.appendChild(btnCancel);
+
+  body.appendChild(actions);
+  openModal('登录 / 同步', body, [], { className: 'auth-modal' });
 }
 
 // 验证码输入步骤：应用内完成，不依赖邮件链接，PWA / 原生通用
 function openOtpModal(method, identifier) {
   const body = document.createElement('div');
-  body.style.display = 'flex';
-  body.style.flexDirection = 'column';
-  body.style.gap = '10px';
+  body.className = 'auth-form';
 
-  const tip = document.createElement('p');
-  tip.className = 'setting-hint';
-  tip.textContent =
-    '验证码已发送至 ' + identifier + '，请在应用内输入 ' + OTP_LENGTH + ' 位码完成登录。';
-  body.appendChild(tip);
+  const subtitle = document.createElement('p');
+  subtitle.className = 'auth-subtitle';
+  subtitle.textContent = '已发送至 ' + identifier;
+  body.appendChild(subtitle);
 
+  const codeWrap = document.createElement('div');
+  codeWrap.className = 'auth-otp-wrap';
   const code = document.createElement('input');
+  code.className = 'auth-otp-input';
   code.type = 'text';
   code.inputMode = 'numeric';
   code.maxLength = OTP_LENGTH;
-  code.placeholder = OTP_LENGTH + ' 位验证码';
-  code.style.cssText =
-    'padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:20px;letter-spacing:6px;text-align:center';
-  body.appendChild(code);
+  code.placeholder = '0'.repeat(OTP_LENGTH);
+  code.addEventListener('keydown', (e) => e.key === 'Enter' && verify());
+  codeWrap.appendChild(code);
+  body.appendChild(codeWrap);
 
   const verify = async () => {
     const token = code.value.trim();
@@ -335,21 +341,41 @@ function openOtpModal(method, identifier) {
     if (error) notify('验证失败：' + error.message);
   };
 
-  const actions = [
-    { label: '登录', primary: true, onClick: verify },
-    {
-      label: '重新发送',
-      ghost: true,
-      onClick: async () => {
-        const payload = method === 'email' ? { email: identifier } : { phone: identifier };
-        const { error } = await supabase.auth.signInWithOtp(payload);
-        if (error) notify('发送失败：' + error.message);
-        else notify('验证码已重新发送');
-      },
-    },
-    { label: '返回', ghost: true, onClick: openAccountModal },
-  ];
-  openModal('输入验证码', body, actions);
+  const actions = document.createElement('div');
+  actions.className = 'auth-actions';
+
+  const btnLogin = document.createElement('button');
+  btnLogin.className = 'btn btn-primary btn-block';
+  btnLogin.textContent = '登录';
+  btnLogin.onclick = verify;
+  actions.appendChild(btnLogin);
+
+  const links = document.createElement('div');
+  links.className = 'auth-links';
+
+  const btnResend = document.createElement('button');
+  btnResend.className = 'auth-link';
+  btnResend.textContent = '重新发送';
+  btnResend.onclick = async () => {
+    const payload = method === 'email' ? { email: identifier } : { phone: identifier };
+    const { error } = await supabase.auth.signInWithOtp(payload);
+    if (error) notify('发送失败：' + error.message);
+    else notify('验证码已重新发送');
+  };
+  links.appendChild(btnResend);
+
+  const btnBack = document.createElement('button');
+  btnBack.className = 'auth-link';
+  btnBack.textContent = '返回';
+  btnBack.onclick = openAccountModal;
+  links.appendChild(btnBack);
+
+  actions.appendChild(links);
+  body.appendChild(actions);
+  openModal('输入验证码', body, [], { className: 'auth-modal' });
+
+  // 自动聚焦验证码输入框
+  setTimeout(() => code.focus(), 50);
 }
 
 // ---------------- 初始化 ----------------

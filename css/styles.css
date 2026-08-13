@@ -777,6 +777,105 @@ body {
   text-align: left;
 }
 
+/* 登录 / 验证码弹窗 */
+.modal.auth-modal {
+  max-width: 320px;
+  padding: 24px;
+}
+.modal.auth-modal h3 {
+  margin: 0 0 18px;
+  font-size: 20px;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-seg {
+  justify-content: center;
+}
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.auth-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.auth-input,
+.auth-otp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.auth-input:focus,
+.auth-otp-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-weak);
+}
+.auth-hint {
+  margin: -8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.auth-hint-center {
+  text-align: center;
+  margin: 0;
+}
+.auth-subtitle {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+.auth-otp-wrap {
+  display: flex;
+  justify-content: center;
+}
+.auth-otp-input {
+  width: 180px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  padding: 14px 10px 14px 18px;
+  font-variant-numeric: tabular-nums;
+}
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2px;
+}
+.auth-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.auth-link {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.2s;
+}
+.auth-link:hover {
+  color: var(--text);
+}
+
 /* Toast */
 .toast {
   position: fixed;

@@ -76,9 +76,18 @@ create policy "user_data_own_row" on public.user_data
 
 1. **启用 Email provider**：Authentication → Providers → Email，确保 **Enable**（默认开）。OTP 验证码由 Supabase 通过邮件发送。
 2. **（生产必做）配置自定义 SMTP**：Supabase 自带邮件服务有发送限额且标注「请勿用于生产」。正式上线前请在 Authentication → Email → 自定义 SMTP 接入自己的邮件服务（如 Postmark / SendGrid / 企业邮箱），否则可能收不到验证码或被限流。
-3. **邮件模板含验证码**：OTP 邮件复用「Magic Link / Sign In」模板，必须包含 `{{ .Token }}`（6 位码）。可在 Authentication → Email Templates 确认模板含该变量（默认即有）。
+3. **关键：把邮件模板从「链接」改成「验证码」**  
+   Supabase 默认的 Magic Link 模板发送的是**可点击链接**（`{{ .ConfirmationURL }}`）。 our app uses in-app OTP, so you must change it to display the **6-digit code** (`{{ .Token }}`).
+   - 路径：**Authentication → Email Templates → Magic Link / Sign In**
+   - 把模板里所有 `{{ .ConfirmationURL }}` 删掉或注释掉
+   - 在正文合适位置加上 `{{ .Token }}`，例如：
+     ```html
+     <p>你的数独登录验证码是：<strong>{{ .Token }}</strong></p>
+     <p>请在应用内输入该验证码完成登录，10 分钟内有效。</p>
+     ```
+   - 保存后再次测试，邮件里应只显示 6 位数字，没有可点击链接。
 
-> 不依赖 Redirect URL（验证码在应用内输入），但 Email provider 与 SMTP 必须可用。
+> 不依赖 Redirect URL（验证码在应用内输入），但 Email provider 与 SMTP 必须可用。如果模板不改，用户收到的仍是链接，前端 OTP 输入框永远用不上。
 
 ### GitHub 登录（可选，PKCE）
 
@@ -134,7 +143,16 @@ create policy "user_data_own_row" on public.user_data
 **原因**：没执行第 3 步建表。  
 **修复**：跑 `npm run deploy:schema` 或在 SQL Editor 执行建表 SQL。
 
-### 坑 4：邮箱验证码收不到
+### 坑 4：邮箱收到的是链接而不是验证码
+
+**原因**：Supabase 默认 Magic Link 模板用的是 `{{ .ConfirmationURL }}`，发出去的是可点击链接。前端改成 OTP 输码后，必须让邮件显示 `{{ .Token }}`。  
+**修复**：Authentication → Email Templates → Magic Link / Sign In，删掉 `{{ .ConfirmationURL }}`，正文改成：
+```html
+<p>你的数独登录验证码是：<strong>{{ .Token }}</strong></p>
+<p>请在应用内输入该验证码完成登录，10 分钟内有效。</p>
+```
+
+### 坑 5：邮箱验证码收不到
 
 免费层邮件可能进垃圾邮件或被限流；**生产环境务必在 Supabase → Authentication → Email 配置自定义 SMTP**，否则可能长期收不到验证码。同时确认 Email Templates 的 Sign In 模板含 `{{ .Token }}`。
 
