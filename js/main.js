@@ -885,13 +885,13 @@ function init() {
 
   $('btn-pause').onclick = togglePause;
   $('btn-resume-game').onclick = resumeGamePlay;
-  $('btn-pause-theme').onclick = () => {
+  $('btn-exit-pause').onclick = saveExit;
+  $('btn-theme').onclick = () => {
     const cur = storage.getSettings().theme;
     const next = cur === 'dark' ? 'light' : 'dark';
     storage.setSettings({ theme: next });
     applyTheme(next);
   };
-  $('btn-exit-pause').onclick = saveExit;
   $('btn-notes').onclick = toggleNotes;
   $('btn-erase').onclick = eraseSelected;
   $('btn-hint').onclick = useHint;
