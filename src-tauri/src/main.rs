@@ -77,8 +77,9 @@ fn main() {
                 let window = app.get_webview_window("main").unwrap();
                 let online_url = "https://sudoku-3ss.pages.dev".to_string();
                 tauri::async_runtime::spawn(async move {
+                    let url_for_check = online_url.clone();
                     let reachable = tauri::async_runtime::spawn_blocking(move || {
-                        ureq::get(&online_url)
+                        ureq::get(&url_for_check)
                             .timeout(std::time::Duration::from_secs(3))
                             .call()
                             .map(|r| r.status() == 200)
