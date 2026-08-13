@@ -2,6 +2,14 @@
 
 所有版本的变更都按时间倒序记录于此，每个版本下按提交类型分组展示。
 
+## [1.0.3] - 2026-08-13
+
+### Bug Fixes
+
+- 适配 tauri-plugin-updater 2.10.x API，改用 Builder::new().build() ([41e46b6])
+- Android CI 升级 AGP 到 8.13.2 满足 Capacitor8/transitive androidx 要求，并安装 android-36 平台 ([c418e75])
+- release 选择版本后默认确认发布（回车即 Y） ([2d88ac9])
+
 ## [1.0.2] - 2026-08-13
 
 ### Features
