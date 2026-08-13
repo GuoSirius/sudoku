@@ -186,6 +186,22 @@ create policy "user_data_own_row" on public.user_data
 
 > ⚠️ **GitHub 的 Client Secret 你自己保存即可，不必发给我。** 只有 Supabase 后台需要它。
 
+#### ⚠️ 排错：为什么我在 localhost 用 GitHub 登录，却跳回了线上地址？
+
+**症状**：你用 `http://localhost:5173` 打开游戏，点「用 GitHub 登录」，授权完之后却被带回了 `https://sudoku-3ss.pages.dev`（线上），而不是你本地的 localhost。
+
+**根因（记牢这一点）**：前端代码在发起 GitHub 登录时，会按你「当前打开网站的地址」自动设置回跳地址，也就是 `redirectTo: window.location.origin`（localhost 时就是 `http://localhost:5173`）。**但 Supabase 有个硬性规则：你传的 `redirectTo` 必须出现在上方「Redirect URLs」白名单里，否则它不认，直接回退到 Site URL。** 而你的 Site URL 填的是线上地址 `https://sudoku-3ss.pages.dev`，于是就被带到了线上。
+
+换句话说：**代码没传错，是 Supabase 后台的 Redirect URLs 白名单里没有 `http://localhost:5173`。**
+
+**怎么验证**：回到 Supabase → **Authentication → URL Configuration**，看 **Redirect URLs** 那一行，确认里面**真的有** `http://localhost:5173` 这一条（不是只填在 Site URL，也不是只填了线上地址）。很多人只加了线上地址，漏了 localhost。
+
+**修复（一步）**：把 `http://localhost:5173` 加进 **Redirect URLs**（点 Add URL → 粘贴 → Save）。加完后再用 localhost 登录，授权完就会乖乖跳回 localhost 了。
+
+> 延伸影响：如果登录被带回了线上地址，你的会话其实**已经建立成功**（Supabase 在回跳 URL 里带回了登录态），只是落在了「错误的源」上。结果是同一个 GitHub 账号的数据被写进了 `sudoku-3ss.pages.dev` 的 localStorage，而 `localhost:5173` 的 localStorage 没同步到——看着像「没登录 / 数据不对」。按上面补上 localhost 后，从哪个地址登录就落到哪个地址，数据就自洽了。
+>
+> 如果你**只打算让用户线上玩、自己不本地调试**，那最省事的做法是：Site URL 和 Redirect URLs 都只留 `https://sudoku-3ss.pages.dev`，并且**永远用线上地址 `https://sudoku-3ss.pages.dev` 打开游戏来登录**（不要用 localhost 登录）。这样根本不会触发回退。
+
 ---
 
 ## 5. 把以下信息发给我，我就开始写代码
