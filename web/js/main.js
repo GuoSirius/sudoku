@@ -5,6 +5,7 @@ import { DIFFICULTIES, formatTime } from './sudoku.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync } from './sync.js';
+import { VERSION, BUILD_DATE, COMMIT } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings'];
@@ -51,26 +52,37 @@ function openMiniWindow() {
 // 伪装成哪种开发可在「设置 → 摸鱼伪装」里选，画面会跟随技术栈渲染对应代码
 const BOSS_LANGS = {
   frontend: {
-    file: 'Dashboard.tsx',
+    file: 'pages/dashboard.vue',
     html:
-      `<span class="kw">import</span> { useState, useEffect } <span class="kw">from</span> <span class="st">'react'</span>;\n` +
-      `<span class="kw">import</span> { fetchOrders } <span class="kw">from</span> <span class="st">'@/api/orders'</span>;\n\n` +
-      `<span class="kw">export default function</span> <span class="fn">Dashboard</span>() {\n` +
-      `  <span class="kw">const</span> [orders, setOrders] = <span class="fn">useState</span>([]);\n` +
-      `  <span class="kw">const</span> [loading, setLoading] = <span class="fn">useState</span>(<span class="kw">true</span>);\n\n` +
-      `  <span class="fn">useEffect</span>(() =&gt; {\n` +
-      `    <span class="fn">fetchOrders</span>().<span class="fn">then</span>((res) =&gt; {\n` +
-      `      setOrders(res.data);\n` +
-      `      setLoading(<span class="kw">false</span>);\n` +
-      `    });\n` +
-      `  }, []);\n\n` +
-      `  <span class="kw">return</span> (\n` +
-      `    <span class="tag">&lt;section</span> <span class="at">className</span>=<span class="st">"panel"</span><span class="tag">&gt;</span>\n` +
-      `      <span class="tag">&lt;h2&gt;</span>订单概览<span class="tag">&lt;/h2&gt;</span>\n` +
-      `      {loading ? <span class="tag">&lt;Spinner</span> <span class="tag">/&gt;</span> : <span class="tag">&lt;Table</span> <span class="at">rows</span>={orders} <span class="tag">/&gt;</span>}\n` +
+      `<span class="tag">&lt;script setup&gt;</span>\n` +
+      `<span class="kw">import</span> { ref, computed } <span class="kw">from</span> <span class="st">'vue'</span>\n` +
+      `<span class="kw">import</span> type { Order } <span class="kw">from</span> <span class="st">'~/types/order'</span>\n\n` +
+      `<span class="kw">const</span> { data: orders, pending } = <span class="kw">await</span> <span class="fn">useFetch</span>&lt;Order[]&gt;(<span class="st">'/api/orders'</span>)\n` +
+      `<span class="kw">const</span> keyword = <span class="fn">ref</span>(<span class="st">''</span>)\n\n` +
+      `<span class="kw">const</span> filtered = <span class="fn">computed</span>(() =&gt;\n` +
+      `  orders.value?.<span class="fn">filter</span>((o) =&gt; o.id.<span class="fn">includes</span>(keyword.value)) ?? []\n` +
+      `)\n\n` +
+      `<span class="kw">const</span> total = <span class="fn">computed</span>(() =&gt; filtered.value.<span class="fn">reduce</span>((sum, o) =&gt; sum + o.amount, <span class="num">0</span>))\n<span class="tag">&lt;/script&gt;</span>\n\n` +
+      `<span class="tag">&lt;template&gt;</span>\n` +
+      `  <span class="tag">&lt;main</span> <span class="at">class</span>=<span class="st">"min-h-screen bg-gray-950 p-6 text-gray-200"</span><span class="tag">&gt;</span>\n` +
+      `    <span class="tag">&lt;section</span> <span class="at">class</span>=<span class="st">"mb-4 flex items-center justify-between"</span><span class="tag">&gt;</span>\n` +
+      `      <span class="tag">&lt;h1</span> <span class="at">class</span>=<span class="st">"text-xl font-bold"</span><span class="tag">&gt;</span>订单概览<span class="tag">&lt;/h1&gt;</span>\n` +
+      `      <span class="tag">&lt;input</span> <span class="at">v-model</span>=<span class="st">"keyword"</span> <span class="at">placeholder</span>=<span class="st">"搜索订单号"</span>\n` +
+      `             <span class="at">class</span>=<span class="st">"rounded bg-gray-800 px-3 py-1 outline-none"</span> <span class="tag">/&gt;</span>\n` +
       `    <span class="tag">&lt;/section&gt;</span>\n` +
-      `  );\n` +
-      `}`,
+      `    <span class="tag">&lt;div</span> <span class="at">v-if</span>=<span class="st">"pending"</span> <span class="at">class</span>=<span class="st">"text-center text-gray-500"</span><span class="tag">&gt;</span>加载中...<span class="tag">&lt;/div&gt;</span>\n` +
+      `    <span class="tag">&lt;table</span> <span class="at">v-else</span> <span class="at">class</span>=<span class="st">"w-full border-collapse text-sm"</span><span class="tag">&gt;</span>\n` +
+      `      <span class="tag">&lt;thead</span> <span class="at">class</span>=<span class="st">"text-left text-gray-400"</span><span class="tag">&gt;&lt;tr&gt;</span><span class="tag">&lt;th&gt;</span>订单号<span class="tag">&lt;/th&gt;&lt;th&gt;</span>金额<span class="tag">&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;</span>\n` +
+      `      <span class="tag">&lt;tbody&gt;</span>\n` +
+      `        <span class="tag">&lt;tr</span> <span class="at">v-for</span>=<span class="st">"o in filtered"</span> <span class="at">:key</span>=<span class="st">"o.id"</span> <span class="at">class</span>=<span class="st">"border-b border-gray-800"</span><span class="tag">&gt;</span>\n` +
+      `          <span class="tag">&lt;td&gt;</span>{{ o.id }}<span class="tag">&lt;/td&gt;</span> <span class="tag">&lt;td&gt;</span>¥{{ o.amount.toFixed(<span class="num">2</span>) }}<span class="tag">&lt;/td&gt;</span>\n` +
+      `        <span class="tag">&lt;/tr&gt;</span>\n` +
+      `      <span class="tag">&lt;/tbody&gt;</span>\n` +
+      `    <span class="tag">&lt;/table&gt;</span>\n` +
+      `    <span class="tag">&lt;p</span> <span class="at">class</span>=<span class="st">"mt-4 text-right text-gray-400"</span><span class="tag">&gt;</span>合计：¥{{ total.toFixed(<span class="num">2</span>) }}<span class="tag">&lt;/p&gt;</span>\n` +
+      `  <span class="tag">&lt;/main&gt;</span>\n` +
+      `<span class="tag">&lt;/template&gt;</span>\n\n` +
+      `<span class="cm">&lt;!-- TODO: 接入 UnoCSS 后把硬编码 class 换成 @apply --&gt;</span>`,
   },
   php: {
     file: 'api.php',
@@ -934,7 +946,7 @@ function renderSettings() {
   if (bwrap) {
     bwrap.innerHTML = '';
     [
-      ['frontend', '前端'],
+      ['frontend', 'Vue'],
       ['php', 'PHP'],
       ['java', 'Java'],
       ['python', 'Python'],
@@ -950,6 +962,13 @@ function renderSettings() {
       };
       bwrap.appendChild(b);
     });
+  }
+  // 关于：版本号 / 构建日期 / 提交哈希（自动同步自 package.json）
+  const verEl = $('set-version');
+  const buildEl = $('set-build');
+  if (verEl) verEl.textContent = 'v' + VERSION;
+  if (buildEl) {
+    buildEl.textContent = `构建日期 ${BUILD_DATE} · 提交 ${COMMIT}`;
   }
 }
 

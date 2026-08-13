@@ -68,7 +68,7 @@ python -m http.server 8137
 | --- | --- |
 | `npm run dev` | 启动本地零依赖静态服务器（默认 8137 端口） |
 | `npm test` | 运行三套自检：引擎 / 对局逻辑 / DOM 交互（全绿即代表可用） |
-| `npm run deploy` | 用 wrangler 部署到 Cloudflare Pages（`npx wrangler pages deploy .`） |
+| `npm run deploy` | 用 wrangler 部署 `web/` 到 Cloudflare Pages（`npx wrangler pages deploy web`） |
 | `npm run gen:icons` | （可选）用 Python 重新生成 PWA 图标到 `icons/` |
 
 ### 自检说明
@@ -92,7 +92,7 @@ npm test
 3. 构建设置：
    - **Framework preset**：`None`
    - **Build command**：留空
-   - **Output directory**：`.`（点号，表示仓库根目录）
+   - **Output directory**：`web`（静态资源目录）
 4. 点击 **Save and Deploy**
 5. 之后每次 `git push` 到 `main` 自动重新部署
 
@@ -102,9 +102,9 @@ npm test
 # 首次需登录（浏览器授权）
 npx wrangler login
 
-# 部署（上传当前目录）
+# 部署（上传 web/ 目录）
 npm run deploy
-# 等价于：npx wrangler pages deploy . --project-name=sudoku
+# 等价于：npx wrangler pages deploy web --project-name=sudoku
 ```
 
 部署完成后终端会输出 `*.pages.dev` 在线地址。
