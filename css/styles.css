@@ -21,6 +21,7 @@
   --cell-hover: #eef1f8;
   --given: #c2c9dd;
   --given-text: #1f2937;
+  --given-mark: rgba(31, 41, 55, 0.38);
   --filled-text: #4338ca;
   --selected: #a5b4fc;
   --peer: #e3e8fb;
@@ -43,6 +44,7 @@
   --cell-hover: #232a3c;
   --given: #3d4459;
   --given-text: #f1f5f9;
+  --given-mark: rgba(241, 245, 249, 0.4);
   --filled-text: #a5b4fc;
   --selected: #4338ca;
   --peer: #23283a;
@@ -347,13 +349,26 @@ body {
   font-weight: 700;
   cursor: default;
 }
+/* 固有格常驻角标：无论被选中/同行/同宫高亮，都能一眼识别「这是题目给的、不可改」 */
+.cell.given::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--given-mark);
+  pointer-events: none;
+}
 .cell:not(.given) {
   color: var(--filled-text);
 }
-.cell.peer {
+/* 同行/列/宫高亮：只作用于可填格，固有格始终保留自己的灰底，避免高亮时混淆「固有/填入」 */
+.cell.peer:not(.given) {
   background: var(--peer);
 }
-.cell.samenum {
+.cell.samenum:not(.given) {
   background: var(--samenum);
 }
 .cell.selected {
