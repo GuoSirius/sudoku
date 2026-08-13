@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = resolve(__dirname, '..');
+const root = resolve(__dirname, '..', 'web');
 const www = resolve(__dirname, 'www');
 
 if (existsSync(www)) rmSync(www, { recursive: true, force: true });

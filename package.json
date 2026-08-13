@@ -10,11 +10,18 @@
     "deploy": "node tools/deploy-schema.mjs && npx wrangler pages deploy . --project-name=sudoku",
     "deploy:schema": "node tools/deploy-schema.mjs",
     "gen:icons": "python tools/gen_icons.py",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "app:sync": "cd app && npm run sync",
     "app:add:android": "cd app && npm run cap:add:android",
     "app:open:android": "cd app && npx cap open android"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "pg": "^8.23.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
   }
 }

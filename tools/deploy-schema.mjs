@@ -15,7 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../js/config.js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../web/js/config.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 

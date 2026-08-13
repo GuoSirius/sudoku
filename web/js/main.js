@@ -1134,6 +1134,31 @@ function init() {
     }
     toast('摸鱼模式：按 ` 键一键隐藏 / 恢复');
   }
+  // Tauri 桌面壳桥接：托盘菜单 / 全局快捷键（Alt+` 老板键、Alt+S 显隐）由 Rust 后端派发事件
+  initTauriBridge();
+}
+
+// 仅在 Tauri 运行时挂载：监听后端派发的老板键 / 迷你模式事件，浏览器/PWA 中静默跳过
+async function initTauriBridge() {
+  if (typeof window === 'undefined' || !window.__TAURI_INTERNALS__) return;
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    await listen('boss-toggle', () => toggleBoss());
+    await listen('mini-toggle', () => {
+      const on = document.body.classList.toggle('mini');
+      if (on) {
+        applyTheme('dark');
+        if (typeof $('screen-game') !== 'undefined' && $('screen-game').classList.contains('hidden')) {
+          startNewGame(storage.getSettings().difficulty || 'easy');
+        }
+        toast('已切换摸鱼迷你模式');
+      }
+    });
+    // 提示用户可用全局快捷键（即使窗口失焦也能触发）
+    console.info('[Tauri] 老板键桥接已挂载：Alt+` 切伪装 / Alt+S 显隐');
+  } catch (e) {
+    console.warn('[Tauri] 桥接初始化失败', e);
+  }
 }
 
 init();

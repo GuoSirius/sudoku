@@ -56,7 +56,7 @@ globalThis.localStorage = {
 };
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }), addEventListener() {}, location: {} };
 
-const { makePuzzle } = await import('../js/sudoku.js');
+const { makePuzzle } = await import('../web/js/sudoku.js');
 const { puzzle, solution } = makePuzzle('easy');
 const cur = {
   id: 'g-restore',
@@ -78,7 +78,7 @@ store['sudoku:screen'] = 'game'; // 上次停留在游戏页
 let pass = 0, fail = 0;
 const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
 
-await import('../js/main.js');
+await import('../web/js/main.js');
 
 assert(!elements['screen-game'].classList.contains('hidden'), '刷新后停留在游戏页');
 assert(elements['screen-menu'].classList.contains('hidden'), '刷新后不在首页');

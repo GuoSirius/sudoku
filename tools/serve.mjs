@@ -3,7 +3,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 
-const ROOT = process.cwd();
+const ROOT = process.env.WEB_ROOT || join(process.cwd(), 'web');
 const PORT = process.env.PORT || 8137;
 
 const MIME = {

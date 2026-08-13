@@ -1,5 +1,5 @@
 // 对局逻辑自检：胜利判定、错误计数、笔记、复盘重建
-import { Game } from '../js/game.js';
+import { Game } from '../web/js/game.js';
 
 let pass = 0;
 let fail = 0;

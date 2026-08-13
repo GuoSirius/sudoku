@@ -150,7 +150,7 @@ function dispatchKey(key, opts = {}) {
 const tick = () => new Promise((r) => setTimeout(r, 420));
 
 // 加载应用（init 会自执行）
-await import('../js/main.js');
+await import('../web/js/main.js');
 assert(true, 'init 无异常');
 
 // 刷新恢复：预置停留在历史页，应恢复历史页而非首页

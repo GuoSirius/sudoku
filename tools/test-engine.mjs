@@ -5,7 +5,7 @@ import {
   findConflicts,
   DIFFICULTIES,
   isComplete,
-} from '../js/sudoku.js';
+} from '../web/js/sudoku.js';
 
 let pass = 0;
 let fail = 0;
