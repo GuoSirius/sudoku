@@ -21,6 +21,15 @@ let toastTimer = null;
 
 const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label || id;
 
+// 摸鱼（小窗 + 老板键）是桌面端能力：移动端/PWA 安装态下没有可拖拽的独立窗口、
+// 也无实体老板键，故屏蔽其入口；但已开启的迷你窗(?mini=1)与伪装屏(.boss)仍照常生效。
+const IS_TOUCH_MOBILE =
+  window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 820px)').matches;
+const IS_STANDALONE =
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (typeof navigator !== 'undefined' && navigator.standalone === true);
+const SLACK_ENABLED = !(IS_TOUCH_MOBILE || IS_STANDALONE);
+
 // ---------------- 主题 ----------------
 // 主题类挂在 <html>（documentElement）上：CSS 变量从根向下覆盖整个文档，
 // 这样 body 整页背景（祖先元素）也能拿到 --bg/--text，避免深色模式外层仍白底。
@@ -37,6 +46,7 @@ function applyTheme(theme) {
 
 // 摸鱼：打开一个独立的小窗口（?mini=1），可拖到屏幕角落，强制暗色、只显示棋盘+数字盘
 function openMiniWindow() {
+  if (!SLACK_ENABLED) return; // 移动端/PWA 无独立可拖拽窗口，屏蔽入口
   const base = typeof location !== 'undefined' ? location.pathname : '/';
   const qs = typeof location !== 'undefined' && location.search ? location.search + '&' : '?';
   const url = base + qs + 'mini=1';
@@ -49,6 +59,7 @@ function openMiniWindow() {
 }
 // 点击「摸鱼小窗」按钮时先二次确认，避免误触弹出独立窗口
 function confirmOpenMini() {
+  if (!SLACK_ENABLED) return; // 移动端/PWA 入口已被隐藏，双重保险
   showModal({
     title: '打开摸鱼小窗',
     body: '<p>将打开一个独立的摸鱼小窗（只显示棋盘、强制暗色），可拖到屏幕角落。确定打开吗？</p>',
@@ -1206,9 +1217,12 @@ function renderSettings() {
         mwrap.appendChild(b);
     });
   }
-  // 摸鱼伪装语言：前端 / PHP / Java / Python
+  // 摸鱼伪装语言：前端 / PHP / Java / Python（仅桌面端有意义，移动端/PWA 隐藏整组）
   const bwrap = $('set-bosslang');
   if (bwrap) {
+    const langGroup = bwrap.closest?.('.setting-group');
+    if (!SLACK_ENABLED && langGroup) langGroup.style.display = 'none';
+    else {
     bwrap.innerHTML = '';
     [
       ['frontend', 'Vue'],
@@ -1227,6 +1241,7 @@ function renderSettings() {
       };
       bwrap.appendChild(b);
     });
+    }
   }
   // 更新检测：启动时自动 / 手动 / 关闭
   const uwrap = $('set-update-check');
@@ -1353,8 +1368,20 @@ function init() {
   };
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
-  $('btn-mini').onclick = confirmOpenMini;
-  $('btn-settings-mini').onclick = confirmOpenMini;
+  // 摸鱼小窗仅桌面端有意义：移动端/PWA 隐藏入口（已开启的迷你窗仍照常渲染）
+  if (SLACK_ENABLED) {
+    $('btn-mini').onclick = confirmOpenMini;
+    $('btn-settings-mini').onclick = confirmOpenMini;
+  } else {
+    const bm = $('btn-mini');
+    if (bm) bm.style.display = 'none';
+    const bsm = $('btn-settings-mini');
+    if (bsm) {
+      bsm.style.display = 'none';
+      const group = bsm.closest?.('.setting-group');
+      if (group) group.style.display = 'none'; // 整组（标题+按钮）一并隐藏更干净
+    }
+  }
 
   $('rp-first').onclick = () => {
     stopReplay();
@@ -1416,13 +1443,15 @@ function init() {
   };
 
   document.addEventListener('keydown', onKey);
-  // 老板键：按 ` 键在「游戏」与「伪装工作界面」间瞬间切换（任何页面/迷你窗都生效）
-  document.addEventListener('keydown', (e) => {
-    if (e.code === 'Backquote' || e.key === '`') {
-      e.preventDefault();
-      toggleBoss();
-    }
-  });
+  // 老板键：按 ` 键在「游戏」与「伪装工作界面」间瞬间切换（仅桌面端，移动端/PWA 无实体键且入口已屏蔽）
+  if (SLACK_ENABLED) {
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Backquote' || e.key === '`') {
+        e.preventDefault();
+        toggleBoss();
+      }
+    });
+  }
   // PC 组合键：按住 Ctrl 默认笔记模式（松开复位）
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Control') ctrlHeld = true;
