@@ -204,6 +204,38 @@ create policy "user_data_own_row" on public.user_data
 >
 > 如果你**只打算让用户线上玩、自己不本地调试**，那最省事的做法是：Site URL 和 Redirect URLs 都只留 `https://sudoku-3ss.pages.dev`，并且**永远用线上地址 `https://sudoku-3ss.pages.dev` 打开游戏来登录**（不要用 localhost 登录）。这样根本不会触发回退。
 
+#### ⚠️ 排错进阶：Redirect URLs 已经加了 localhost，为什么 GitHub 还是跳回线上？
+
+如果你确认 **URL Configuration → Redirect URLs** 里已经有 `http://localhost:8137` / `http://127.0.0.1:8137`，但 GitHub 登录还是从本地跳回了 `https://sudoku-3ss.pages.dev`，那就**不是 URL Configuration 的问题**，而是 GitHub provider 本身的回调地址配错了。去查以下两处：
+
+**A. GitHub OAuth App 的 Authorization callback URL 必须填 Supabase 的固定回调**
+
+打开 GitHub → Settings → Developer settings → OAuth Apps → 你的 Sudoku Sync 应用：
+
+- **Authorization callback URL** 必须是：
+  ```
+  https://oafefnbyzajzdejelhsw.supabase.co/auth/v1/callback
+  ```
+- **绝对不能**填你自己的应用地址，例如 `https://sudoku-3ss.pages.dev/auth/callback`、`https://sudoku-3ss.pages.dev` 等。如果填的是你的应用地址，GitHub 授权完就会**直接跳到你的应用地址**，根本不会把 Supabase 的 `redirectTo` 带过去，于是你就落到了线上。
+
+**怎么验证**：点开 GitHub OAuth App 页面，看一眼 Authorization callback URL。只要不是 `https://<你的project-ref>.supabase.co/auth/v1/callback` 这种格式，就是错的。改成正确的即可。
+
+**B. Supabase Providers → GitHub 里的 Redirect URL 字段不要覆盖**
+
+Supabase 项目 → **Authentication → Providers → GitHub**：
+
+- 有些 Supabase 版本在这里会有一个 **Redirect URL (optional)** 字段。如果你填了 `https://sudoku-3ss.pages.dev`，它可能会覆盖代码里动态传的 `redirectTo`，导致本地登录也跳线上。
+- **留空**即可（让代码里的 `redirectTo: window.location.origin` 生效），或者填 `http://localhost:8137`（仅本地调试用）。
+
+**C. 一个快速定位方法：先试邮箱登录**
+
+用 localhost 打开游戏，点邮箱登录，输入你的邮箱，去邮件里点魔法链接：
+
+- 如果魔法链接点开后**正确回到了 localhost** → 说明 Supabase URL Configuration 完全没问题，问题只出在 GitHub provider 配置（就是上面 A 或 B）。
+- 如果魔法链接点开后也回到了线上 → 说明 URL Configuration 还有漏的地方，再检查 Site URL / Redirect URLs 是否保存成功、有没有拼写错误。
+
+> 📌 **常见错误顺序**：很多人先配了 GitHub OAuth App，回头又改了 Site URL，结果 GitHub OAuth App 的回调地址还是旧的 pages.dev。记住：**GitHub 那边的回调地址永远是 Supabase，不是你的应用域名；你的应用域名只写在 Supabase 的 URL Configuration 里。**
+
 ---
 
 ## 5. 把以下信息发给我，我就开始写代码
