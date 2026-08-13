@@ -102,8 +102,8 @@ async function selectVersion(current) {
 }
 
 async function confirmRelease(version) {
-  const ans = await question(`确认发布 v${version}？（y/N）：`);
-  return ans.trim().toLowerCase() === 'y';
+  const ans = await question(`确认发布 v${version}？（Y/n，直接回车即发布）：`);
+  return ans.trim().toLowerCase() !== 'n';
 }
 
 const TYPE_ORDER = [
