@@ -21,12 +21,13 @@ let toastTimer = null;
 
 const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label || id;
 
-// 摸鱼（小窗 + 老板键）：电脑端能力。仅在「小屏触摸设备（手机 / 小平板）」上无意义——
+// 摸鱼（小窗 + 老板键）：电脑端能力。仅在「触摸手持设备（手机 / 平板）」上无意义——
 // 没有可拖拽的独立窗口、也无实体老板键，故屏蔽入口；桌面浏览器与桌面 PWA 均保留
 // （电脑上正需要小窗来在"不便大屏操作时"摸鱼）。已开启的迷你窗(?mini=1)与伪装屏(.boss)仍照常生效。
-const IS_SMALL_TOUCH =
-  window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 820px)').matches;
-const SLACK_ENABLED = !IS_SMALL_TOUCH;
+// 用 pointer:coarse + hover:none 判定触摸手持设备（与屏幕方向无关，避免大屏手机横屏时误放行）。
+const IS_TOUCH_DEVICE =
+  window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(hover: none)').matches;
+const SLACK_ENABLED = !IS_TOUCH_DEVICE;
 
 // ---------------- 主题 ----------------
 // 主题类挂在 <html>（documentElement）上：CSS 变量从根向下覆盖整个文档，
@@ -44,7 +45,7 @@ function applyTheme(theme) {
 
 // 摸鱼：打开一个独立的小窗口（?mini=1），可拖到屏幕角落，强制暗色、只显示棋盘+数字盘
 function openMiniWindow() {
-  if (!SLACK_ENABLED) return; // 小屏触摸设备无独立可拖拽窗口，屏蔽入口
+  if (!SLACK_ENABLED) return; // 触摸手持设备无独立可拖拽窗口，屏蔽入口
   const base = typeof location !== 'undefined' ? location.pathname : '/';
   const qs = typeof location !== 'undefined' && location.search ? location.search + '&' : '?';
   const url = base + qs + 'mini=1';
@@ -57,7 +58,7 @@ function openMiniWindow() {
 }
 // 点击「摸鱼小窗」按钮时先二次确认，避免误触弹出独立窗口
 function confirmOpenMini() {
-  if (!SLACK_ENABLED) return; // 小屏触摸设备入口已被隐藏，双重保险
+  if (!SLACK_ENABLED) return; // 触摸手持设备入口已被隐藏，双重保险
   showModal({
     title: '打开摸鱼小窗',
     body: '<p>将打开一个独立的摸鱼小窗（只显示棋盘、强制暗色），可拖到屏幕角落。确定打开吗？</p>',
