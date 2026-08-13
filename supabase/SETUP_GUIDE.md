@@ -140,13 +140,23 @@ create policy "user_data_own_row" on public.user_data
    - 开启了 **RLS 行级安全**：用户只能读写自己的那一行，别人看不到你的数据；
    - 复盘数据很轻（每条只存「题目 + 走子序列」，约 1–2KB），几百条也就几百 KB，完全无压力。
 
-> 🚀 **嫌手动粘贴麻烦？用一键脚本**：在项目根目录执行下面一行即可自动建表（脚本读取 `supabase/schema.sql` 并直连 Supabase Postgres 执行，幂等可重复跑）：
+> 🚀 **嫌手动粘贴麻烦？用一键脚本**：在项目根目录执行即可自动建表（脚本读取 `supabase/schema.sql` 并直连 Supabase Postgres 执行，幂等可重复跑）。
+>
+> **推荐方式：用 `.env` 文件（密码不暴露）**
+> 1. 复制模板：`cp .env.example .env`
+> 2. 编辑 `.env`，把里面的 `<你的数据库密码>` 换成真实密码（连接串在 Supabase → **Settings → Database → Connection string** 复制，URI 格式）。`.env` 已写入 `.gitignore`，**不会进版本库**；
+> 3. 运行：
+> ```bash
+> npm run deploy:schema
+> ```
+> 脚本会自动读取 `.env` 里的 `SUPABASE_DB_URL`（零依赖加载，无需任何额外包）。
+>
+> **备用方式：命令行一次性前缀**（不写文件，临时跑一次）：
 > ```bash
 > SUPABASE_DB_URL="postgresql://postgres:<密码>@db.oafefnbyzajzdejelhsw.supabase.co:5432/postgres" npm run deploy:schema
 > ```
-> - 连接串在 Supabase → **Settings → Database → Connection string**（URI 格式）复制；
 > - 首次需先 `npm install pg`（脚本在 `tools/deploy-schema.mjs`）；
-> - 宝塔/国内网络访问 Supabase 数据库 Occasionally 偏慢，多试一次即可。
+> - 宝塔/国内网络访问 Supabase 数据库 Sometimes 偏慢，多试一次即可。
 
 ---
 
