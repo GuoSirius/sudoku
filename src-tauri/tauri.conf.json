@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "数独 Sudoku",
+  "productName": "Sudoku",
   "version": "1.0.3",
   "identifier": "cn.sudoku.game",
   "build": {

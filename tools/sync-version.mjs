@@ -35,7 +35,7 @@ const tauriConfPath = join(root, 'src-tauri', 'tauri.conf.json');
 if (existsSync(tauriConfPath)) {
   const tauriConf = JSON.parse(await readFile(tauriConfPath, 'utf8'));
   tauriConf.version = version;
-  tauriConf.productName = tauriConf.productName || '数独 Sudoku';
+  tauriConf.productName = tauriConf.productName || 'Sudoku';
   await writeFile(tauriConfPath, JSON.stringify(tauriConf, null, 2) + '\n', 'utf8');
 }
 
