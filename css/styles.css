@@ -86,6 +86,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 12px 14px;
   position: sticky;
   top: 0;
@@ -94,10 +95,16 @@ body {
   z-index: 10;
 }
 .appbar-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   margin: 0;
-  letter-spacing: 4px;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.appbar-logo {
+  opacity: 0.85;
 }
 .icon-btn {
   width: 40px;
@@ -113,6 +120,20 @@ body {
   transition: transform 0.1s, background 0.2s;
 }
 .icon-btn:active {
+  transform: scale(0.94);
+}
+/* 顶栏按钮轻量化：透明底、无边框，不抢标题视线 */
+.appbar .icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+}
+.appbar .icon-btn:hover {
+  background: var(--surface);
+}
+.appbar .icon-btn:active {
   transform: scale(0.94);
 }
 /* 账号按钮：SVG 图标居中；登录态右上角显示绿色状态点 */

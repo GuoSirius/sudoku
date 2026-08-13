@@ -781,9 +781,25 @@ function renderSettings() {
     };
     dwrap.appendChild(b);
   });
-  [...$('set-theme').children].forEach((b) =>
-    b.classList.toggle('active', b.dataset.v === s.theme)
-  );
+  // 主题：跟随系统 / 浅色 / 深色
+  const twrap = $('set-theme');
+  twrap.innerHTML = '';
+  [
+    ['auto', '跟随系统'],
+    ['light', '浅色'],
+    ['dark', '深色'],
+  ].forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.className = 'seg-btn' + (v === s.theme ? ' active' : '');
+    b.textContent = label;
+    b.dataset.v = v;
+    b.onclick = () => {
+      storage.setSettings({ theme: v });
+      applyTheme(v);
+      renderSettings();
+    };
+    twrap.appendChild(b);
+  });
   // 错误提示强度：关闭 / 仅冲突 / 全量核对
   const mwrap = $('set-mistake');
   if (mwrap) {
@@ -861,15 +877,6 @@ function init() {
     }
     showScreen('menu');
   };
-  $('btn-theme').onclick = () => {
-    const order = ['auto', 'light', 'dark'];
-    const cur = storage.getSettings().theme;
-    const next = order[(order.indexOf(cur) + 1) % 3];
-    storage.setSettings({ theme: next });
-    applyTheme(next);
-    toast('主题：' + (next === 'auto' ? '跟随系统' : next === 'light' ? '浅色' : '深色'));
-  };
-
   $('btn-resume').onclick = resumeGame;
   $('btn-new').onclick = newGameFlow;
   $('btn-history').onclick = () => showScreen('history');
@@ -930,16 +937,6 @@ function init() {
       renderReplayStep();
     }, 600);
   };
-
-  $('set-theme')
-    .querySelectorAll('.seg-btn')
-    .forEach((b) => {
-      b.onclick = () => {
-        storage.setSettings({ theme: b.dataset.v });
-        applyTheme(b.dataset.v);
-        renderSettings();
-      };
-    });
 
   $('btn-clear-data').onclick = () => {
     showModal({

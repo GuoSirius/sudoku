@@ -433,17 +433,23 @@ assert(
   '进入排行榜时数据已渲染（非空）'
 );
 
-// 主题切换：类应挂在 <html>（根元素）上，且可在三态间循环
+// 主题切换：类应挂在 <html>（根元素）上，且可通过设置页三态切换
 const htmlEl = document.documentElement;
 assert(
   htmlEl.classList.contains('theme-light') || htmlEl.classList.contains('theme-dark'),
   'init 后 <html> 已带主题类'
 );
-elements['btn-theme'].click(); // dark -> auto(跟随系统: 浅)
+elements['btn-settings'].click();
+const themeBtns = elements['set-theme'].querySelectorAll('.seg-btn');
+const themeAuto = themeBtns.find((b) => b.dataset.v === 'auto');
+const themeLight = themeBtns.find((b) => b.dataset.v === 'light');
+const themeDark = themeBtns.find((b) => b.dataset.v === 'dark');
+assert(themeAuto && themeLight && themeDark, '设置页渲染主题分段（3 档）');
+themeAuto.click(); // -> auto(跟随系统: 浅)
 assert(htmlEl.classList.contains('theme-light'), '跟随系统(浅色)切换生效');
-elements['btn-theme'].click(); // -> light(显式浅)
+themeLight.click(); // -> light(显式浅)
 assert(htmlEl.classList.contains('theme-light'), '显式浅色切换生效');
-elements['btn-theme'].click(); // -> dark(显式深)
+themeDark.click(); // -> dark(显式深)
 assert(
   htmlEl.classList.contains('theme-dark') && !htmlEl.classList.contains('theme-light'),
   '显式深色切换生效（背景随之变暗）'
