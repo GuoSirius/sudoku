@@ -4,6 +4,7 @@ import { storage } from './storage.js';
 import { DIFFICULTIES, formatTime } from './sudoku.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
+import { initSync } from './sync.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings'];
@@ -978,6 +979,7 @@ function init() {
   });
 
   registerPWA();
+  initSync(); // 异步：非浏览器/离线时自动降级为纯本地，不阻塞游戏
   restoreScreen();
 }
 

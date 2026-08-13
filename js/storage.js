@@ -79,6 +79,13 @@ export const storage = {
     lb.push(rec);
     write(KEYS.leaderboard, lb);
   },
+  // 整表替换（供云端合并后回写本地使用）
+  setHistory(arr) {
+    write(KEYS.history, (arr || []).slice(0, 200));
+  },
+  setLeaderboard(arr) {
+    write(KEYS.leaderboard, arr || []);
+  },
 
   clearHistory() {
     try {
