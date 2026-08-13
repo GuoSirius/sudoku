@@ -205,9 +205,19 @@ function showModal({ title, body, actions = [], dismissable = true, actionsClass
   root.innerHTML = '';
   const m = document.createElement('div');
   m.className = 'modal';
+  // 头部：标题 + 右上角关闭按钮（所有弹框统一由按钮或叉叉关闭，不再点遮罩关闭）
+  const head = document.createElement('div');
+  head.className = 'modal-head';
   const h = document.createElement('h3');
   h.textContent = title;
-  m.appendChild(h);
+  head.appendChild(h);
+  const xBtn = document.createElement('button');
+  xBtn.type = 'button';
+  xBtn.className = 'modal-close';
+  xBtn.textContent = '×';
+  xBtn.onclick = () => closeModal();
+  head.appendChild(xBtn);
+  m.appendChild(head);
   if (typeof body === 'string') {
     const p = document.createElement('p');
     p.innerHTML = body;
@@ -228,7 +238,6 @@ function showModal({ title, body, actions = [], dismissable = true, actionsClass
   if (actions.length) m.appendChild(act);
   root.appendChild(m);
   root.classList.add('show');
-  if (dismissable) root.onclick = (e) => e.target === root && closeModal();
 }
 function closeModal() {
   const r = $('modal-root');

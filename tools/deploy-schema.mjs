@@ -7,7 +7,9 @@
 //     本脚本会自动读取（见下方零依赖 .env 加载器）。
 //   方式 B（一次性命令行前缀）：
 //     SUPABASE_DB_URL="postgresql://postgres:你的密码@db.oafefnbyzajzdejelhsw.supabase.co:5432/postgres" npm run deploy:schema
-//   连接串来源：Supabase 后台 → Settings → Database → Connection string（URI 格式）。
+//   连接串来源（新版 Supabase 控制台）：项目首页顶部点「Connect」按钮 → 选 Direct connection（直连，
+//   格式 postgresql://postgres:密码@db.<项目ID>.supabase.co:5432/postgres）。其中「密码」是建库时设的
+//   Database password，可在 Project Settings → Database → Database password 处 Reset。
 //
 // 说明：schema.sql 本身幂等（create table if not exists / drop policy if exists），可重复运行。
 // 未设置 SUPABASE_DB_URL 时本脚本仅打印提示并以 0 退出（不阻塞后续部署步骤）。
