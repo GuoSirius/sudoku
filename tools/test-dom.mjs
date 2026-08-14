@@ -466,7 +466,7 @@ assert(
 
 // 设置页数据加载：进入设置应渲染难度与错误提示分段控件（验证刷新恢复时也能渲染）
 elements['btn-settings'].click();
-assert(elements['set-difficulty'].children.length === 4, '设置页渲染难度分段（4 档）');
+assert(elements['set-difficulty'].children.length === 6, '设置页渲染难度分段（6 档）');
 assert(elements['set-mistake'].children.length === 3, '设置页渲染错误提示分段（3 档）');
 elements['btn-settings-back'].click();
 

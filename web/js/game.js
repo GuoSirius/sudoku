@@ -12,6 +12,8 @@ export class Game {
     this.cells = data.cells; // 81，当前盘面
     this.notes = data.notes; // 81 个数组，记录每格的铅笔标记
     this.difficulty = data.difficulty;
+    this.grade = data.grade ?? null; // 本局实际技巧评级（0..8），由生成器给出
+    this.clues = data.clues ?? null; // 本局给定数（展示用）
     this.elapsedMs = data.elapsedMs || 0; // 已累计（暂停态）时长
     this._runningSince = null; // 计时起点（仅运行中非空）
     this.mistakes = data.mistakes || 0;
@@ -27,7 +29,7 @@ export class Game {
   }
 
   static newGame(difficulty) {
-    const { puzzle, solution } = makePuzzle(difficulty);
+    const { puzzle, solution, grade, clues } = makePuzzle(difficulty);
     return new Game({
       id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
       puzzle,
@@ -35,6 +37,8 @@ export class Game {
       cells: puzzle.slice(),
       notes: Array.from({ length: 81 }, () => []),
       difficulty,
+      grade,
+      clues,
       elapsedMs: 0,
       mistakes: 0,
       status: 'playing',
@@ -56,6 +60,8 @@ export class Game {
       cells: this.cells,
       notes: this.notes,
       difficulty: this.difficulty,
+      grade: this.grade,
+      clues: this.clues,
       elapsedMs: this.elapsedMs,
       mistakes: this.mistakes,
       revealedWrong: [...this.revealedWrong],

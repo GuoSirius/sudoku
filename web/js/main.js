@@ -2,6 +2,7 @@
 import { Game } from './game.js';
 import { storage } from './storage.js';
 import { DIFFICULTIES, formatTime } from './sudoku.js';
+import { techniqueName } from './grader.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
@@ -347,7 +348,8 @@ function renderGame() {
     onNoteClick
   );
   renderPad();
-  $('game-difficulty').textContent = diffLabel(game.difficulty);
+  $('game-difficulty').textContent =
+    diffLabel(game.difficulty) + (game.grade != null ? ' · ' + techniqueName(game.grade) : '');
   $('game-timer').textContent = formatTime(game.currentElapsed());
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();
@@ -553,7 +555,7 @@ function openDifficultyModal(onPick) {
   DIFFICULTIES.forEach((d) => {
     const b = document.createElement('button');
     b.className = 'seg-btn' + (d.id === cur.difficulty ? ' active' : '');
-    b.textContent = `${d.label}（约 ${d.clues} 提示）`;
+    b.textContent = `${d.label} · ${techniqueName(d.level)}`;
     b.onclick = () => {
       closeModal();
       onPick(d.id);
@@ -895,10 +897,10 @@ function stopReplay() {
 }
 
 // ---------------- 排行榜 ----------------
-// 难度基础分：难度越高完成得分越高（与 DIFFICULTY_CLUES 反向对应：提示越少越难）
-const DIFF_SCORE = { easy: 100, medium: 200, hard: 350, expert: 500 };
+// 难度基础分：难度越高（技巧层级越高）完成得分越高
+const DIFF_SCORE = { beginner: 60, easy: 100, medium: 200, hard: 350, expert: 500, master: 700 };
 // 各难度“标准用时”（秒）：用于时间因子归一化，使不同难度的成绩可横向比较
-const DIFF_PAR = { easy: 240, medium: 480, hard: 720, expert: 960 };
+const DIFF_PAR = { beginner: 180, easy: 240, medium: 480, hard: 720, expert: 960, master: 1200 };
 function difficultyScore(rec) {
   return DIFF_SCORE[rec.difficulty] || 100;
 }
