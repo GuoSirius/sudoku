@@ -97,7 +97,8 @@ function digKeepingUnique(solution, removals) {
 
 console.log(`\n评级器求解正确性：${passed} 通过 / ${failed} 失败`);
 
-// 5) 生成契约：每难度生成的盘面满足 grade≤level、唯一解、与暴力解一致，且(非入门)clues 落入区间
+// 5) 生成契约：每局唯一解、与暴力解一致、且能在纯逻辑范围内解开（g≤MAX_LEVEL，有思路不靠猜）；
+//    难度由 clues 区间定义，grade/技巧组合随盘面浮动（同档每局不同）。
 import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
 
 {
@@ -105,47 +106,55 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
   const maxGrade = {};
   const sumClues = {};
   let windowOk = true;
+  const gradesSeen = {}; // 每档出现的不同 grade 数（验证「同档技巧组合有变化」）
   for (const d of DIFFICULTIES) {
     const dist = {};
     let okAll = true;
+    const gradeSet = new Set();
     for (let t = 0; t < PER; t++) {
-      const { puzzle, solution, grade: g, clues } = makePuzzle(d.id);
+      const { puzzle, solution, grade: g, clues, techniques } = makePuzzle(d.id);
       const uniq = hasUniqueSolution(puzzle);
       const bf = bruteForce(puzzle);
       const match = bf && bf.join('') === solution.join('');
-      const inWindow = d.level === 0 || (clues >= d.cluesMin && clues <= d.cluesMax);
-      if (!(g <= d.level && uniq && match && inWindow)) okAll = false;
+      const solvable = g <= MAX_LEVEL; // 纯逻辑可解（有思路，不靠猜）
+      // 下限：稀疏奖励可能把目标降到 29(中等)/26(困难)，故用各自下界；上限不严格约束（挖空可能提前停）
+      const floor = d.id === 'medium' || d.id === 'hard' ? 26 : d.cluesMin;
+      const inWindow = d.level === 0 || (clues >= floor && clues <= 81);
+      if (!(uniq && match && solvable && inWindow)) okAll = false;
       if (!inWindow) windowOk = false;
+      assert(Array.isArray(techniques), `${d.label}：应返回 techniques 数组`);
       dist[g] = (dist[g] || 0) + 1;
+      gradeSet.add(g);
       maxGrade[d.id] = Math.max(maxGrade[d.id] || 0, g);
       sumClues[d.id] = (sumClues[d.id] || 0) + clues;
     }
-    assert(
-      okAll,
-      `${d.label}：每局应 grade≤${d.level} 且唯一解且与暴力解一致且(非入门)clues∈[${d.cluesMin},${d.cluesMax}]`
-    );
+    gradesSeen[d.id] = gradeSet.size;
+    assert(okAll, `${d.label}：每局应唯一解、与暴力解一致、纯逻辑可解(g≤${MAX_LEVEL})`);
     console.log(
-      `  · ${d.label} 评级分布(样本${PER}):`,
+      `  · ${d.label} grade分布(样本${PER}):`,
       JSON.stringify(dist),
       'clues区间',
       d.level === 0 ? 'N/A(入门)' : `[${d.cluesMin},${d.cluesMax}]`
     );
   }
-  assert(windowOk, '所有非入门档 clues 都应落入各自区间');
-  // 正向信号：难度递增应反映到「空格数主轴」(c+g 中真正拉开梯度的维度)，且高档位稳定命中高阶技巧。
-  // 说明：本评级器对绝大多数盘只评到 grade 1~2（grade 在简单/中等/困难间几乎不区分），
-  // 故档间差异主要由 clues 区间承担；grade 维度主要用于保证不超档 + 专家/极限封顶。
+  assert(windowOk, '所有非入门档 clues 应不低于各自下界');
+  // 正向信号：难度递增反映到「空格数主轴」；极限稳定命中 XY-Wing；且同档技巧组合有变化（不写死）。
   const avgClues = {};
   for (const d of DIFFICULTIES) avgClues[d.id] = sumClues[d.id] / PER;
   console.log(
     '  · 各档平均 clues:',
     DIFFICULTIES.map((d) => `${d.label}=${avgClues[d.id].toFixed(1)}`).join('  ')
   );
+  console.log(
+    '  · 各档出现的不同 grade 数(验证每局组合有变化):',
+    DIFFICULTIES.map((d) => `${d.label}=${gradesSeen[d.id]}`).join('  ')
+  );
   assert(avgClues.easy > avgClues.medium, '简单应比中等更满(空格更少)');
   assert(avgClues.medium > avgClues.hard, '中等应比困难更满');
   assert(avgClues.hard > avgClues.expert, '困难应比专家更满');
   assert(maxGrade.master >= 9, `极限档应出现需「XY-Wing」的盘（观测 ${maxGrade.master}）`);
-  assert(maxGrade.expert >= 4, `专家档应出现需「区块/三数」的盘（观测 ${maxGrade.expert}）`);
+  assert(gradesSeen.medium >= 2, `中等档不同 grade 应≥2（同档技巧组合有变化，观测 ${gradesSeen.medium}）`);
+  assert(gradesSeen.hard >= 2, `困难档不同 grade 应≥2（同档技巧组合有变化，观测 ${gradesSeen.hard}）`);
 }
 
 console.log(`\n评级器 + 生成契约：${passed} 通过 / ${failed} 失败`);

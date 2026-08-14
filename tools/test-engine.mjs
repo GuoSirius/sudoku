@@ -7,7 +7,7 @@ import {
   isComplete,
   DIFFICULTY_BY_ID,
 } from '../web/js/sudoku.js';
-import { grade, techniqueName } from '../web/js/grader.js';
+import { grade, techniqueName, MAX_LEVEL } from '../web/js/grader.js';
 
 let pass = 0;
 let fail = 0;
@@ -22,12 +22,15 @@ function assert(cond, msg) {
 }
 
 for (const d of DIFFICULTIES) {
-  console.log(`测试难度: ${d.label} (技巧层级 ${d.level} = ${techniqueName(d.level)})`);
+  console.log(`测试难度: ${d.label}（实际评级随盘面浮动，目标技巧 ${techniqueName(d.level)}）`);
   const t0 = Date.now();
-  const { puzzle, solution, grade: g, clues } = makePuzzle(d.id);
+  const { puzzle, solution, grade: g, clues, techniques } = makePuzzle(d.id);
   const dt = Date.now() - t0;
 
-  assert(g <= d.level, `实际评级 ${g} 应 ≤ 目标层级 ${d.level}`);
+  // grade 不再封顶到 d.level：难度由 clues 区间定义，技巧组合随盘面浮动；
+  // 只需保证「纯逻辑可解（有思路、不靠猜）」且唯一解。
+  assert(g <= MAX_LEVEL, `实际评级 ${g} 应在纯逻辑可解范围内(≤${MAX_LEVEL})`);
+  assert(Array.isArray(techniques), '应返回 techniques 数组');
   assert(hasUniqueSolution(puzzle), '谜题应有唯一解');
   assert(isComplete(solution), '完整解应填满');
   assert(findConflicts(solution).size === 0, '完整解应无冲突');

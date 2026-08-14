@@ -12,10 +12,10 @@ export const SIZE = 9;
 // hints 用于难度选择弹窗，告诉玩家这一档在练什么。
 export const DIFFICULTIES = [
   { id: 'beginner', label: '入门', level: 0, cluesMin: 46, cluesMax: 54, hint: '仅唯一余数，最适合新手建立信心' },
-  { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '唯一候选，稳定上手' },
-  { id: 'medium', label: '中等', level: 2, cluesMin: 36, cluesMax: 40, hint: '数对（Naked/Hidden Pair）' },
-  { id: 'hard', label: '困难', level: 3, cluesMin: 31, cluesMax: 35, hint: '隐性数对（Hidden Pair）' },
-  { id: 'expert', label: '专家', level: 4, cluesMin: 27, cluesMax: 30, hint: '区块摒除与三数（Pointing/Triple）' },
+  { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '以唯一候选为主，轻松上手' },
+  { id: 'medium', label: '中等', level: 2, cluesMin: 36, cluesMax: 40, hint: '每局技巧组合不同，含数对/区块等，常有变化' },
+  { id: 'hard', label: '困难', level: 3, cluesMin: 31, cluesMax: 35, hint: '每局不同，偶尔出现 X-Wing / XY-Wing 进阶' },
+  { id: 'expert', label: '专家', level: 4, cluesMin: 27, cluesMax: 30, hint: '区块摒除与三数，硬核进阶' },
   { id: 'master', label: '极限', level: 9, cluesMin: 21, cluesMax: 29, hint: 'XY-Wing 级进阶逻辑，硬核烧脑' },
 ];
 export const DIFFICULTY_BY_ID = Object.fromEntries(DIFFICULTIES.map((d) => [d.id, d]));
@@ -99,13 +99,14 @@ export function hasUniqueSolution(grid) {
   return countSolutions(grid, 2) === 1;
 }
 
-// 根据难度生成谜题（双轴：clues 空格数 + level 技巧层级）。
-//   · 入门(level 0)：digCap(0) 只保留唯一余数可解，grade 恰为 0、clues 自然偏多（不变）。
-//   · 其余档：挖空目标改为「挖到目标 clues 区间」而非挖到最稀疏——随机顺序挖空中，
-//     每挖一格都用 logicSolve(puzzle, level) 校验：一旦不可解(需 >level 技巧)就回退该格。
-//     这样既保证最终盘面唯一解且 grade ≤ level，又让 clues 真正落入区间，产生平滑难度梯度。
-//   多次尝试中：命中 g === level 直接采用（名副其实）；否则保留 ≤level 且最接近的最佳盘面。
-// 返回 { puzzle, solution, grade, clues }：grade 为实际评级（≤level），clues 为给定数。
+// 根据难度生成谜题：难度由「空格数区间 clues」定义（保证梯度、保留存），
+// 而「本局实际用到的最难技巧 grade 与技巧组合 techniques」随盘面自然浮动、不写死——
+// 同一档每局锻炼的技巧组合都不同，中等/困难偶发更稀疏可触达 X-Wing / XY-Wing。
+//   · 入门(level 0)：digCap(0) 保留较多提示、明显最简单，技巧组合恒为 [0]。
+//   · 极限(level 9)：maximalDig 挖到最稀疏且唯一解，优先选需 XY-Wing(grade 9) 的盘。
+//   · 中间档：挖到目标 clues 区间（gate 用 logicSolve(.,MAX_LEVEL) 保证唯一解），
+//     grade 与 techniques 由实际求解给出，不封顶；中等/困难加 12% 稀疏奖励。
+// 返回 { puzzle, solution, grade, clues, techniques }。
 import { logicSolve, grade, MAX_LEVEL } from './grader.js';
 
 // 挖到最稀疏且逻辑可解（仅用 ≤MAX_LEVEL 技巧仍可解）。
@@ -145,58 +146,60 @@ export function makePuzzle(difficulty = 'medium') {
   const def = DIFFICULTY_BY_ID[difficulty] || DIFFICULTY_BY_ID.medium;
   const level = def.level;
   const { cluesMin, cluesMax } = def;
-  if (level === 0) return digCap(0, def.cluesMin); // 入门：保证 grade 0、且保留较多提示（看着就简单）
-  // 极限(level 9)：挖到最稀疏且逻辑可解(=唯一解) 的盘面；优先选「需 XY-Wing(grade 9)」的盘，
-  // 命中即采用，否则取评级最高者。clues 由挖空自然决定（约 21~29）。
+  // 入门(level 0)：保留较多提示、明显最简单，技巧组合恒为 [0]
+  if (level === 0) {
+    const r = digCap(0, def.cluesMin);
+    return { puzzle: r.puzzle, solution: r.solution, grade: r.grade, clues: r.clues, techniques: [0] };
+  }
+  // 极限(level 9)：挖到最稀疏且逻辑可解(=唯一解)；优先选需 XY-Wing(grade 9) 的盘，命中即采用
   if (level === 9) {
     let best = null;
     const TRIES = 40;
     for (let i = 0; i < TRIES; i++) {
       const { puzzle, solution } = maximalDig();
-      const g = grade(puzzle);
+      const res = logicSolve(puzzle, MAX_LEVEL);
+      const g = res.usedLevel;
       const clues = puzzle.filter((v) => v !== 0).length;
-      if (g === 9) return { puzzle, solution, grade: g, clues };
+      if (g === 9) return { puzzle, solution, grade: g, clues, techniques: res.usedSet };
       if (best === null || g > best.grade || (g === best.grade && clues < best.clues)) {
-        best = { puzzle, solution, grade: g, clues };
+        best = { puzzle, solution, grade: g, clues, techniques: res.usedSet };
       }
     }
     return best;
   }
-  let best = null; // 最佳逼近：≤level 且最接近 level
-  const MAX_ATTEMPTS = 80;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const solution = generateSolved();
-    const puzzle = solution.slice();
-    const target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
-    let clues = 81;
-    const order = shuffle([...Array(81).keys()]);
-    for (const idx of order) {
-      if (clues <= target) break;
-      const backup = puzzle[idx];
-      puzzle[idx] = 0;
-      // 回退：挖掉后失去唯一解(需 >level 技巧才解得开) → 复原该格
-      if (!logicSolve(puzzle, level).solved) {
-        puzzle[idx] = backup;
-      } else {
-        clues--;
-      }
-    }
-    const g = grade(puzzle);
-    const finalClues = puzzle.filter((v) => v !== 0).length;
-    if (g === level) {
-      return { puzzle, solution, grade: g, clues: finalClues };
-    }
-    // 记录最接近 level(且 ≤level) 的盘面；同 level 时优先 clues 更贴近 target
-    const better =
-      best === null ||
-      g > best.grade ||
-      (g === best.grade && Math.abs(finalClues - target) < Math.abs(best.clues - target));
-    if (g <= level && better) {
-      best = { puzzle, solution, grade: g, clues: finalClues };
-    }
+  // 中间档(简单/中等/困难/专家)：挖空目标改为「挖到目标 clues 区间」，gate 用 logicSolve(.,MAX_LEVEL)
+  // 保证唯一解；grade 与 techniques 由实际求解决定、不封顶——同一档每局技巧组合自然不同。
+  // 中等/困难 加 12%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
+  // 从而「中等甚至能用 X/XY」、每局解法组合不写死。
+  let target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
+  if ((difficulty === 'medium' || difficulty === 'hard') && Math.random() < 0.18) {
+    target = 26;
   }
-  // 兜底：返回最佳逼近；极端情况退化为 cap 挖空
-  return best || digCap(level);
+  return digToTarget(target);
+}
+
+// 挖到目标 clues 数（clues 降到 target 即停），用 logicSolve(.,MAX_LEVEL) 逐格校验保证最终盘面唯一解。
+// 返回 { puzzle, solution, grade, clues, techniques }：grade 为本局最难技巧，techniques 为用到的技巧组合。
+function digToTarget(targetClues) {
+  const solution = generateSolved();
+  const puzzle = solution.slice();
+  let clues = 81;
+  const order = shuffle([...Array(81).keys()]);
+  for (const idx of order) {
+    if (clues <= targetClues) break;
+    const backup = puzzle[idx];
+    puzzle[idx] = 0;
+    if (!logicSolve(puzzle, MAX_LEVEL).solved) puzzle[idx] = backup; // 失去唯一解 → 复原该格
+    else clues--;
+  }
+  const res = logicSolve(puzzle, MAX_LEVEL);
+  return {
+    puzzle,
+    solution,
+    grade: res.usedLevel,
+    clues: puzzle.filter((v) => v !== 0).length,
+    techniques: res.usedSet,
+  };
 }
 
 // 找出当前盘面上所有冲突格（同行/列/宫重复），返回冲突索引的 Set

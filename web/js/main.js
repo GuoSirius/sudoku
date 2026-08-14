@@ -357,6 +357,12 @@ function renderGame() {
   );
   renderPad();
   $('game-difficulty').textContent = diffBadge(game.difficulty, game.grade);
+  // 本局实际用到的技巧组合（随盘面浮动，每局不同）；techniqueShort 返回固定短名，无外部输入，安全
+  const techText = (game.techniques && game.techniques.length)
+    ? game.techniques.slice().sort((a, b) => a - b).map(techniqueShort).filter(Boolean).join(' · ')
+    : techniqueShort(game.grade);
+  const techEl = $('game-techniques');
+  if (techEl) techEl.innerHTML = '本局技巧：<b>' + (techText || '—') + '</b>';
   $('game-timer').textContent = formatTime(game.currentElapsed());
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();

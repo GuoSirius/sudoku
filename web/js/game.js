@@ -14,6 +14,7 @@ export class Game {
     this.difficulty = data.difficulty;
     this.grade = data.grade ?? null; // 本局实际技巧评级（0..8），由生成器给出
     this.clues = data.clues ?? null; // 本局给定数（展示用）
+    this.techniques = data.techniques ?? null; // 本局实际用到的技巧层级组合（数组），由生成器给出
     this.elapsedMs = data.elapsedMs || 0; // 已累计（暂停态）时长
     this._runningSince = null; // 计时起点（仅运行中非空）
     this.mistakes = data.mistakes || 0;
@@ -29,7 +30,7 @@ export class Game {
   }
 
   static newGame(difficulty) {
-    const { puzzle, solution, grade, clues } = makePuzzle(difficulty);
+    const { puzzle, solution, grade, clues, techniques } = makePuzzle(difficulty);
     return new Game({
       id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
       puzzle,
@@ -39,6 +40,7 @@ export class Game {
       difficulty,
       grade,
       clues,
+      techniques,
       elapsedMs: 0,
       mistakes: 0,
       status: 'playing',
@@ -62,6 +64,7 @@ export class Game {
       difficulty: this.difficulty,
       grade: this.grade,
       clues: this.clues,
+      techniques: this.techniques,
       elapsedMs: this.elapsedMs,
       mistakes: this.mistakes,
       revealedWrong: [...this.revealedWrong],

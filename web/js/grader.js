@@ -480,25 +480,28 @@ export function techniqueShort(level) {
 }
 
 // ---------------- 求解与评级 ----------------
-// 仅用层级 0..maxLevel 的技巧尝试求解；返回是否解出、最难用到层级、最终盘面
+// 仅用层级 0..maxLevel 的技巧尝试求解；返回是否解出、最难用到层级、最终盘面、
+// 以及「本局实际用到的技巧层级集合 usedSet」（用于向玩家展示「每局锻炼的技巧组合」）。
 export function logicSolve(puzzle, maxLevel) {
   const grid = puzzle.slice();
   const cands = computeCands(grid);
   let used = 0;
+  const usedSet = new Set();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     let acted = false;
     for (let t = 0; t <= maxLevel; t++) {
       if (TECH_FNS[t](grid, cands)) {
         acted = true;
+        usedSet.add(t);
         if (t > used) used = t;
         break;
       }
     }
     if (!acted) break;
-    if (isFull(grid)) return { solved: true, usedLevel: used, grid };
+    if (isFull(grid)) return { solved: true, usedLevel: used, grid, usedSet: [...usedSet] };
   }
-  return { solved: isFull(grid), usedLevel: used, grid };
+  return { solved: isFull(grid), usedLevel: used, grid, usedSet: [...usedSet] };
 }
 
 // 解开本局所需的最难技巧最小层级；超出实现范围返回 MAX_LEVEL+1（需试数/猜测）
