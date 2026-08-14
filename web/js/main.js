@@ -2,7 +2,6 @@
 import { Game } from './game.js';
 import { storage } from './storage.js';
 import { DIFFICULTIES, formatTime } from './sudoku.js';
-import { techniqueName } from './grader.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
@@ -348,8 +347,7 @@ function renderGame() {
     onNoteClick
   );
   renderPad();
-  $('game-difficulty').textContent =
-    diffLabel(game.difficulty) + (game.grade != null ? ' · ' + techniqueName(game.grade) : '');
+  $('game-difficulty').textContent = diffLabel(game.difficulty);
   $('game-timer').textContent = formatTime(game.currentElapsed());
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();
@@ -555,7 +553,7 @@ function openDifficultyModal(onPick) {
   DIFFICULTIES.forEach((d) => {
     const b = document.createElement('button');
     b.className = 'seg-btn' + (d.id === cur.difficulty ? ' active' : '');
-    b.textContent = `${d.label} · ${techniqueName(d.level)}`;
+    b.textContent = d.label;
     b.onclick = () => {
       closeModal();
       onPick(d.id);
