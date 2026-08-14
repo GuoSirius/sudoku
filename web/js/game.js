@@ -12,7 +12,7 @@ export class Game {
     this.cells = data.cells; // 81，当前盘面
     this.notes = data.notes; // 81 个数组，记录每格的铅笔标记
     this.difficulty = data.difficulty;
-    this.grade = data.grade ?? null; // 本局实际技巧评级（0..8），由生成器给出
+    this.grade = data.grade ?? null; // 本局实际技巧评级（0..9），由生成器给出
     this.clues = data.clues ?? null; // 本局给定数（展示用）
     this.techniques = data.techniques ?? null; // 本局实际用到的技巧层级组合（数组），由生成器给出
     this.elapsedMs = data.elapsedMs || 0; // 已累计（暂停态）时长

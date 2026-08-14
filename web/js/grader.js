@@ -442,7 +442,7 @@ const TECH_FNS = [
 ];
 export const MAX_LEVEL = TECH_FNS.length - 1; // 9
 
-// 技巧层级 → 中文名（用于 UI 展示「本局锻炼的技巧」）
+// 技巧层级 → 中文名（用于测试输出与潜在 UI 展示）
 // 下标必须与 TECH_FNS 一一对应。
 export const TECHNIQUE_NAMES = [
   '唯一余数（Naked Single）',
@@ -457,7 +457,8 @@ export const TECHNIQUE_NAMES = [
   'XY-Wing',
 ];
 // 实现覆盖到 XY-Wing(L9)。自然随机盘的技巧评级集中在 0~4 与 9（需进阶链），
-// 5~8 级（三数/X-Wing/剑鱼）极少被随机盘直接需要；难度档据此映射到 0/1/2/3/4/9。
+// 5~8 级（三数/X-Wing/剑鱼）极少被随机盘直接需要；故难度梯度主要靠 clues（给定数）拉开，
+// grade 随盘面自然浮动，不封顶到固定层级。
 
 // 简短技巧名（≤3 字），用于界面徽章，与难度标签组合后整体 ≤6 字
 export const TECH_SHORT_NAMES = [
@@ -481,7 +482,7 @@ export function techniqueShort(level) {
 
 // ---------------- 求解与评级 ----------------
 // 仅用层级 0..maxLevel 的技巧尝试求解；返回是否解出、最难用到层级、最终盘面、
-// 以及「本局实际用到的技巧层级集合 usedSet」（用于向玩家展示「每局锻炼的技巧组合」）。
+// 以及「本局实际用到的技巧层级集合 usedSet」（收集供分析与潜在提示功能使用，当前界面头部不展示）。
 export function logicSolve(puzzle, maxLevel) {
   const grid = puzzle.slice();
   const cands = computeCands(grid);

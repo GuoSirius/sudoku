@@ -4,18 +4,19 @@
 export const SIZE = 9;
 
 // 难度由「双轴」共同决定，保证逐级均匀、体感明显：
-//   · 技巧轴 level：解开本局所需的最难逻辑技巧层级（对应 grader.js 的技巧阶梯）。
-//     自然随机盘的技巧评级集中在 0~4 与 9（需进阶链），故 level 映射到这些自然存在的层级。
-//   · 空格轴 clues：给定数区间 [cluesMin, cluesMax]。clues 越小空格越多、搜索空间越大、越难；
-//     用 clues 主轴把入门→极限均匀铺开（每档 clues 递减约 5），再叠加 level 封顶保证技巧仍逐级进阶。
-// 入门(level 0) 特殊：用 digCap(0) 只保留唯一余数可解，产出的盘 grade 恰为 0、clues 自然偏多。
-// hints 用于难度选择弹窗，告诉玩家这一档在练什么。
+//   · 空格轴 clues（主轴）：给定数区间 [cluesMin, cluesMax]。clues 越小空格越多、越难；
+//     用 clues 主轴把入门→极限单调铺开（每档约递减 5），是档间梯度的主要来源，也保留存（入门看着就空得少）。
+//   · 技巧轴 grade：本局实际最难逻辑技巧层级（对应 grader.js 技巧阶梯），由盘面自然浮动、不写死、不封顶；
+//     自然随机盘评级集中在 0~4 与 9，进阶技巧（区块/X-Wing/XY-Wing）主要靠「稀疏奖励」偶发触达。
+//   · 各档 level 字段仅作分流：level 0 → digCap 保留多提示（入门恒最简单、技巧组合 [0]）；
+//     level 9 → maximalDig 挖到最稀疏并优先取 XY-Wing(g9) 盘（极限硬核）；中间档忽略 level，只挖到目标 clues。
+// hints 用于难度选择弹窗，描述这一档常见练法（因每局实际技巧随盘面浮动，措辞为「常见组合」而非固定）。
 export const DIFFICULTIES = [
   { id: 'beginner', label: '入门', level: 0, cluesMin: 46, cluesMax: 54, hint: '仅唯一余数，最适合新手建立信心' },
-  { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '以唯一候选为主，轻松上手' },
+  { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '唯一余数与候选，轻松上手' },
   { id: 'medium', label: '中等', level: 2, cluesMin: 36, cluesMax: 40, hint: '每局技巧组合不同，含数对/区块等，常有变化' },
   { id: 'hard', label: '困难', level: 3, cluesMin: 31, cluesMax: 35, hint: '每局不同，偶尔出现 X-Wing / XY-Wing 进阶' },
-  { id: 'expert', label: '专家', level: 4, cluesMin: 27, cluesMax: 30, hint: '区块摒除与三数，硬核进阶' },
+  { id: 'expert', label: '专家', level: 4, cluesMin: 27, cluesMax: 30, hint: '偶发区块摒除 / 三数 / X-Wing，硬核进阶' },
   { id: 'master', label: '极限', level: 9, cluesMin: 21, cluesMax: 29, hint: 'XY-Wing 级进阶逻辑，硬核烧脑' },
 ];
 export const DIFFICULTY_BY_ID = Object.fromEntries(DIFFICULTIES.map((d) => [d.id, d]));
@@ -105,7 +106,7 @@ export function hasUniqueSolution(grid) {
 //   · 入门(level 0)：digCap(0) 保留较多提示、明显最简单，技巧组合恒为 [0]。
 //   · 极限(level 9)：maximalDig 挖到最稀疏且唯一解，优先选需 XY-Wing(grade 9) 的盘。
 //   · 中间档：挖到目标 clues 区间（gate 用 logicSolve(.,MAX_LEVEL) 保证唯一解），
-//     grade 与 techniques 由实际求解给出，不封顶；中等/困难加 12% 稀疏奖励。
+//     grade 与 techniques 由实际求解给出，不封顶；中等/困难加 18% 稀疏奖励。
 // 返回 { puzzle, solution, grade, clues, techniques }。
 import { logicSolve, grade, MAX_LEVEL } from './grader.js';
 
@@ -169,7 +170,7 @@ export function makePuzzle(difficulty = 'medium') {
   }
   // 中间档(简单/中等/困难/专家)：挖空目标改为「挖到目标 clues 区间」，gate 用 logicSolve(.,MAX_LEVEL)
   // 保证唯一解；grade 与 techniques 由实际求解决定、不封顶——同一档每局技巧组合自然不同。
-  // 中等/困难 加 12%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
+  // 中等/困难 加 18%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
   // 从而「中等甚至能用 X/XY」、每局解法组合不写死。
   let target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
   if ((difficulty === 'medium' || difficulty === 'hard') && Math.random() < 0.18) {
