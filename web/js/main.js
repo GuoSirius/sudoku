@@ -234,11 +234,21 @@ function restoreScreen() {
     enterGame();
     return;
   }
-  // 复盘：凭 replayId 找回历史记录并重放开局（找不到记录则回退到历史列表）
+  // 复盘：凭 replayId 找回历史记录并重开；恢复上次进度步（不自动播放）
   if (saved === 'replay' && replayId) {
     const rec = (storage.getHistory() || []).find((r) => String(r.id) === String(replayId));
     if (rec) {
-      openReplay(rec);
+      let savedStep = 0;
+      try {
+        const s = parseInt(localStorage.getItem('sudoku:replayStep'), 10);
+        if (Number.isFinite(s) && s >= 0 && s <= rec.moves.length) savedStep = s;
+      } catch (e) {}
+      openReplay(rec); // 内部将 replayStep 重置为 0 并持久化
+      if (savedStep > 0) {
+        replayStep = savedStep;
+        renderReplayStep();
+        persistReplayStep();
+      }
       return;
     }
   }
@@ -1005,11 +1015,15 @@ function renderReplayStep() {
   );
   $('replay-step').textContent = `${replayStep} / ${replayRec.moves.length}`;
 }
+function persistReplayStep() {
+  try { localStorage.setItem('sudoku:replayStep', String(replayStep)); } catch (e) {}
+}
 function openReplay(record) {
   replayRec = record;
   replayStep = 0;
   stopReplay();
   try { localStorage.setItem('sudoku:replayId', String(record.id)); } catch (e) {}
+  persistReplayStep();
   showScreen('replay');
   renderReplayInfo();
   renderReplayStep();
@@ -1527,21 +1541,25 @@ function init() {
     stopReplay();
     replayStep = 0;
     renderReplayStep();
+    persistReplayStep();
   };
   $('rp-prev').onclick = () => {
     stopReplay();
     replayStep = Math.max(0, replayStep - 1);
     renderReplayStep();
+    persistReplayStep();
   };
   $('rp-next').onclick = () => {
     stopReplay();
     replayStep = Math.min(replayRec.moves.length, replayStep + 1);
     renderReplayStep();
+    persistReplayStep();
   };
   $('rp-last').onclick = () => {
     stopReplay();
     replayStep = replayRec.moves.length;
     renderReplayStep();
+    persistReplayStep();
   };
   $('rp-play').onclick = () => {
     if (replayPlayId) {
@@ -1557,6 +1575,7 @@ function init() {
       }
       replayStep++;
       renderReplayStep();
+      persistReplayStep();
     }, 600);
   };
 

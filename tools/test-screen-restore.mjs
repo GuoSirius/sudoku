@@ -88,6 +88,7 @@ globalThis.location = { search: '' };
 
 const scenario = process.env.SCENARIO;
 const { makePuzzle } = await import('../web/js/sudoku.js');
+let replayExpectStep = 0, replayExpectTotal = 0;
 
 if (scenario === 'guide') {
   store['sudoku:screen'] = 'guide';
@@ -105,13 +106,19 @@ if (scenario === 'guide') {
   store['sudoku:guideReturn'] = 'game';
 } else if (scenario === 'replay') {
   const { puzzle, solution } = makePuzzle('easy');
+  const empties = [];
+  for (let i = 0; i < 81 && empties.length < 2; i++) if (puzzle[i] === 0) empties.push(i);
+  const moves = empties.map((idx) => ({ idx, val: solution[idx], kind: 'set', t: 0 }));
   const rec = {
     id: 'seed-1', difficulty: 'easy', durationMs: 123000, mistakes: 0,
-    hintsUsed: 0, won: true, date: Date.now(), puzzle, solution, moves: [],
+    hintsUsed: 0, won: true, date: Date.now(), puzzle, solution, moves,
   };
   store['sudoku:history'] = JSON.stringify([rec]);
   store['sudoku:screen'] = 'replay';
   store['sudoku:replayId'] = 'seed-1';
+  store['sudoku:replayStep'] = String(Math.min(1, moves.length)); // 上次进度步（非开局）
+  replayExpectStep = Math.min(1, moves.length);
+  replayExpectTotal = moves.length;
 }
 
 let pass = 0, fail = 0;
@@ -139,7 +146,7 @@ if (scenario === 'replay') {
   assert(!elements['screen-replay'].classList.contains('hidden'), '刷新后停留在复盘页');
   assert(elements['screen-menu'].classList.contains('hidden'), '刷新后不在首页');
   assert(elements['replay-board'].children.length === 81, '复盘棋盘已渲染（81 格）');
-  assert(/0 \//.test(elements['replay-step'].textContent), '复盘进度文本已渲染');
+  assert(elements['replay-step'].textContent === `${replayExpectStep} / ${replayExpectTotal}`, '刷新后恢复到上次进度步（非开局第 0 步）');
 }
 
 console.log(`场景「${scenario}」: ${pass} 通过, ${fail} 失败`);
