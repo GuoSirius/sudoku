@@ -1035,7 +1035,8 @@ html:not(.slack) .slack-only {
 }
 .seg.vertical .seg-btn {
   border-radius: var(--radius-sm);
-  text-align: left;
+  text-align: center;
+  width: 100%;
   padding: 12px 16px;
 }
 /* 弹窗内嵌的分段与操作区之间保持呼吸间距 */
