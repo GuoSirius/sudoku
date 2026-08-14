@@ -101,13 +101,13 @@ export function hasUniqueSolution(grid) {
 }
 
 // 根据难度生成谜题：难度由「空格数区间 clues」定义（保证梯度、保留存），
-// 而「本局实际用到的最难技巧 grade 与技巧组合 techniques」随盘面自然浮动、不写死——
+// 而「本局实际用到的最难技巧 grade」随盘面自然浮动、不写死——
 // 同一档每局锻炼的技巧组合都不同，中等/困难偶发更稀疏可触达 X-Wing / XY-Wing。
-//   · 入门(level 0)：digCap(0) 保留较多提示、明显最简单，技巧组合恒为 [0]。
+//   · 入门(level 0)：digCap(0) 保留较多提示、明显最简单。
 //   · 极限(level 9)：maximalDig 挖到最稀疏且唯一解，优先选需 XY-Wing(grade 9) 的盘。
 //   · 中间档：挖到目标 clues 区间（gate 用 logicSolve(.,MAX_LEVEL) 保证唯一解），
-//     grade 与 techniques 由实际求解给出，不封顶；中等/困难加 18% 稀疏奖励。
-// 返回 { puzzle, solution, grade, clues, techniques }。
+//     中等/困难加 18% 稀疏奖励。
+// 返回 { puzzle, solution, grade, clues }。
 import { logicSolve, grade, MAX_LEVEL } from './grader.js';
 
 // 挖到最稀疏且逻辑可解（仅用 ≤MAX_LEVEL 技巧仍可解）。
@@ -150,7 +150,7 @@ export function makePuzzle(difficulty = 'medium') {
   // 入门(level 0)：保留较多提示、明显最简单，技巧组合恒为 [0]
   if (level === 0) {
     const r = digCap(0, def.cluesMin);
-    return { puzzle: r.puzzle, solution: r.solution, grade: r.grade, clues: r.clues, techniques: [0] };
+    return { puzzle: r.puzzle, solution: r.solution, grade: r.grade, clues: r.clues };
   }
   // 极限(level 9)：挖到最稀疏且逻辑可解(=唯一解)；优先选需 XY-Wing(grade 9) 的盘，命中即采用
   if (level === 9) {
@@ -161,15 +161,15 @@ export function makePuzzle(difficulty = 'medium') {
       const res = logicSolve(puzzle, MAX_LEVEL);
       const g = res.usedLevel;
       const clues = puzzle.filter((v) => v !== 0).length;
-      if (g === 9) return { puzzle, solution, grade: g, clues, techniques: res.usedSet };
+      if (g === 9) return { puzzle, solution, grade: g, clues };
       if (best === null || g > best.grade || (g === best.grade && clues < best.clues)) {
-        best = { puzzle, solution, grade: g, clues, techniques: res.usedSet };
+        best = { puzzle, solution, grade: g, clues };
       }
     }
     return best;
   }
   // 中间档(简单/中等/困难/专家)：挖空目标改为「挖到目标 clues 区间」，gate 用 logicSolve(.,MAX_LEVEL)
-  // 保证唯一解；grade 与 techniques 由实际求解决定、不封顶——同一档每局技巧组合自然不同。
+  // 保证唯一解；grade 由实际求解决定、不封顶——同一档每局技巧组合自然不同。
   // 中等/困难 加 18%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
   // 从而「中等甚至能用 X/XY」、每局解法组合不写死。
   let target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
@@ -180,7 +180,7 @@ export function makePuzzle(difficulty = 'medium') {
 }
 
 // 挖到目标 clues 数（clues 降到 target 即停），用 logicSolve(.,MAX_LEVEL) 逐格校验保证最终盘面唯一解。
-// 返回 { puzzle, solution, grade, clues, techniques }：grade 为本局最难技巧，techniques 为用到的技巧组合。
+// 返回 { puzzle, solution, grade, clues }：grade 为本局最难技巧。
 function digToTarget(targetClues) {
   const solution = generateSolved();
   const puzzle = solution.slice();
@@ -199,7 +199,6 @@ function digToTarget(targetClues) {
     solution,
     grade: res.usedLevel,
     clues: puzzle.filter((v) => v !== 0).length,
-    techniques: res.usedSet,
   };
 }
 

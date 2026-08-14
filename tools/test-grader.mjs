@@ -98,7 +98,7 @@ function digKeepingUnique(solution, removals) {
 console.log(`\n评级器求解正确性：${passed} 通过 / ${failed} 失败`);
 
 // 5) 生成契约：每局唯一解、与暴力解一致、且能在纯逻辑范围内解开（g≤MAX_LEVEL，有思路不靠猜）；
-//    难度由 clues 区间定义，grade/技巧组合随盘面浮动（同档每局不同）。
+//    难度由 clues 区间定义，grade 随盘面浮动（同档每局不同、不写死固定技巧）。
 import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
 
 {
@@ -106,13 +106,13 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
   const maxGrade = {};
   const sumClues = {};
   let windowOk = true;
-  const gradesSeen = {}; // 每档出现的不同 grade 数（验证「同档技巧组合有变化」）
+  const gradesSeen = {}; // 每档出现的不同 grade 数（验证「同档难度体验有变化」）
   for (const d of DIFFICULTIES) {
     const dist = {};
     let okAll = true;
     const gradeSet = new Set();
     for (let t = 0; t < PER; t++) {
-      const { puzzle, solution, grade: g, clues, techniques } = makePuzzle(d.id);
+      const { puzzle, solution, grade: g, clues } = makePuzzle(d.id);
       const uniq = hasUniqueSolution(puzzle);
       const bf = bruteForce(puzzle);
       const match = bf && bf.join('') === solution.join('');
@@ -122,7 +122,6 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
       const inWindow = d.level === 0 || (clues >= floor && clues <= 81);
       if (!(uniq && match && solvable && inWindow)) okAll = false;
       if (!inWindow) windowOk = false;
-      assert(Array.isArray(techniques), `${d.label}：应返回 techniques 数组`);
       dist[g] = (dist[g] || 0) + 1;
       gradeSet.add(g);
       maxGrade[d.id] = Math.max(maxGrade[d.id] || 0, g);
@@ -146,15 +145,15 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
     DIFFICULTIES.map((d) => `${d.label}=${avgClues[d.id].toFixed(1)}`).join('  ')
   );
   console.log(
-    '  · 各档出现的不同 grade 数(验证每局组合有变化):',
+    '  · 各档出现的不同 grade 数(验证每局体验有变化):',
     DIFFICULTIES.map((d) => `${d.label}=${gradesSeen[d.id]}`).join('  ')
   );
   assert(avgClues.easy > avgClues.medium, '简单应比中等更满(空格更少)');
   assert(avgClues.medium > avgClues.hard, '中等应比困难更满');
   assert(avgClues.hard > avgClues.expert, '困难应比专家更满');
   assert(maxGrade.master >= 9, `极限档应出现需「XY-Wing」的盘（观测 ${maxGrade.master}）`);
-  assert(gradesSeen.medium >= 2, `中等档不同 grade 应≥2（同档技巧组合有变化，观测 ${gradesSeen.medium}）`);
-  assert(gradesSeen.hard >= 2, `困难档不同 grade 应≥2（同档技巧组合有变化，观测 ${gradesSeen.hard}）`);
+  assert(gradesSeen.medium >= 2, `中等档不同 grade 应≥2（同档难度体验有变化，观测 ${gradesSeen.medium}）`);
+  assert(gradesSeen.hard >= 2, `困难档不同 grade 应≥2（同档难度体验有变化，观测 ${gradesSeen.hard}）`);
 }
 
 console.log(`\n评级器 + 生成契约：${passed} 通过 / ${failed} 失败`);
