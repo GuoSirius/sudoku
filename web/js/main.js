@@ -2,14 +2,14 @@
 import { Game } from './game.js';
 import { storage } from './storage.js';
 import { DIFFICULTIES, DIFFICULTY_BY_ID, formatTime } from './sudoku.js';
-import { techniqueShort } from './grader.js';
+import { techniqueShort, TECHNIQUE_NAMES, TECH_SHORT_NAMES } from './grader.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings'];
+const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
 
 let game = null; // 当前 Game 实例
 let noteMode = false;
@@ -19,6 +19,7 @@ let replayRec = null;
 let replayStep = 0;
 let replayPlayId = null;
 let toastTimer = null;
+let guideReturn = 'menu'; // 从哪进入玩法指南，返回时回到对应页面
 
 const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label || id;
 
@@ -727,6 +728,14 @@ function rebuildFromMoves(puzzle, moves) {
 
 // 把一条「未完成」历史恢复为当前对局并进入游戏继续玩
 function resumeFromHistory(rec) {
+  // 若当前已有从这局续玩的进行中实例（resumeId 匹配），直接复用它，保留累计计时——
+  // 否则二次点击「继续」会从陈旧的历史快照 rec.durationMs 重新计时，把已玩的时间清零。
+  const cur = storage.getCurrent();
+  if (cur && cur.status !== 'won' && (cur.resumeId === rec.id || cur.id === rec.id)) {
+    resumeGame();
+    toast('已恢复这局的进度，继续加油！');
+    return;
+  }
   const { cells, notes } = rebuildFromMoves(rec.puzzle, rec.moves);
   // 已错误格先计入 revealedWrong，避免后续「检查」重复计数（不额外泄题）
   const revealedWrong = new Set();
@@ -734,7 +743,6 @@ function resumeFromHistory(rec) {
     if (cells[i] !== 0 && cells[i] !== rec.solution[i]) revealedWrong.add(i);
   }
   // 避免丢失正在进行的另一局：先将其归档为历史
-  const cur = storage.getCurrent();
   if (cur && cur.status !== 'won' && cur.id !== rec.id) archiveCurrent();
 
   game = Game.fromJSON({
@@ -846,6 +854,86 @@ function confirmClear(kind) {
       },
     ],
   });
+}
+
+// ---------------- 玩法指南 ----------------
+// L0–L9 十级技巧说明（与 grader.js 的 TECH_FNS 层级一一对应），用于「玩法指南」页
+const TECH_GUIDE = [
+  {
+    level: 0,
+    desc: '某空格在其所在的行、列、宫中已排除其他 8 个数字，仅剩 1 个候选数 → 直接填入。最基础、最常用。',
+    example: '例如某空格同行已有 1 2 3、同列已有 4 5 6、同宫已有 7 8，则它只能是 9。',
+  },
+  {
+    level: 1,
+    desc: '在某一个单元（行/列/宫）内，某个数字只能落在该单元的唯一一个空格（其余空格都被占或排除）→ 填入。',
+    example: '例如第 2 列里数字 5 只能放进 (3,2) 这一格，因为其他空格都被 5 占用或排除。',
+  },
+  {
+    level: 2,
+    desc: '同一单元内有两个空格，候选数完全相同且都恰好是两个数字 → 该单元其余空格可排除这两个数字。',
+    example: '某宫内两空格候选都是 {3,8}，则同宫其他空格都不可能是 3 或 8。',
+  },
+  {
+    level: 3,
+    desc: '同一单元内有两个数字，恰好只共同出现在相同的两个空格 → 这两格去掉其他候选，只保留这两个数字。',
+    example: '某行只有 (1,4) 与 (1,7) 两空格能放 2 和 6，则这两格候选只保留 {2,6}。',
+  },
+  {
+    level: 4,
+    desc: '某数字在某一宫内只能出现在同一行（或列）→ 这一行（列）其他宫里的该数字可排除；反之亦然（行/列锁定到宫）。',
+    example: '第 1 宫内数字 9 只出现在第 2 行的两格，则第 2 行其余两宫里的 9 全部排除。',
+  },
+  {
+    level: 5,
+    desc: '同一单元内三个空格的候选并集恰好是 3 个数字、且各自候选都是其子集 → 该单元其余空格排除这 3 个数字。',
+    example: '某宫三空格候选分别为 {1,2}、{2,3}、{1,3}，并集为 {1,2,3}，则同宫其他空格排除 1/2/3。',
+  },
+  {
+    level: 6,
+    desc: '同一单元内三个数字恰好只共同出现在相同的三个空格 → 这三格候选限制为这三个数字。',
+    example: '某列只有三空格能出现 4、7、9，则这三格候选只保留 {4,7,9}。',
+  },
+  {
+    level: 7,
+    desc: '某数字在两条行（或两列）的候选位置恰好构成 2×2 的矩形 → 可消除这两列（或两行）其余位置的该数字。',
+    example: '数字 6 在第 2 行与第 5 行都只出现在第 1、9 列 → 第 1、9 列其他行里的 6 全部排除。',
+  },
+  {
+    level: 8,
+    desc: 'X-Wing 的推广：扩展到三条线（3 行×3 列，或 3 列×3 行）的闭合环 → 同理排除其余位置的该数字。',
+    example: '数字 3 分布在 3 行×3 列的交叉矩形中，则这 3 列其余行的 3 全部排除。',
+  },
+  {
+    level: 9,
+    desc: '三个双候选格构成“翼”：支点含 a,b；两翼分别含 b,c 与 a,c，且都看到支点、两翼互不可见 → 同时看到两翼的空格不可能是 c，可排除 c。',
+    example: '支点候选 {2,5}，两翼 {5,8} 与 {2,8} 都看到支点且互不可见 → 同时看到两翼的空格排除 8。',
+  },
+];
+
+function renderGuide() {
+  const wrap = $('guide-tech-list');
+  wrap.innerHTML = '';
+  TECH_GUIDE.forEach((t) => {
+    const card = document.createElement('div');
+    card.className = 'tech-card';
+    card.innerHTML =
+      `<div class="tech-head">` +
+      `<span class="tech-lv">L${t.level}</span>` +
+      `<span class="tech-name">${TECHNIQUE_NAMES[t.level]}</span>` +
+      `<span class="tech-short">${TECH_SHORT_NAMES[t.level]}</span>` +
+      `</div>` +
+      `<p class="tech-desc">${t.desc}</p>` +
+      `<p class="tech-ex">例：${t.example}</p>`;
+    wrap.appendChild(card);
+  });
+}
+// 打开玩法指南：记录来源页面；从游戏进入时先冻结计时（不计入指南停留时间），返回时再恢复
+function openGuide(from) {
+  guideReturn = from || 'menu';
+  if (from === 'game' && game && game.status === 'playing') game.pauseTimer();
+  renderGuide();
+  showScreen('guide');
 }
 
 // ---------------- 复盘 ----------------
@@ -1352,6 +1440,7 @@ function init() {
   $('btn-history').onclick = () => showScreen('history');
   $('btn-leaderboard').onclick = () => showScreen('leaderboard');
   $('btn-settings').onclick = () => showScreen('settings');
+  $('btn-guide').onclick = () => openGuide('menu');
 
   $('btn-pause').onclick = togglePause;
   $('btn-resume-game').onclick = resumeGamePlay;
@@ -1376,6 +1465,28 @@ function init() {
   };
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
+  // 玩法指南返回：回到来源页面；来自游戏则恢复计时（不把指南停留时间计入成绩）
+  $('btn-guide-back').onclick = () => {
+    const back = guideReturn;
+    if (back === 'game' && game) {
+      showScreen('game');
+      if (game.status === 'playing') game.startTimer();
+      renderGame();
+      startTimerLoop();
+    } else {
+      showScreen(back);
+    }
+  };
+  const guideLink = $('game-guide-link');
+  if (guideLink) {
+    guideLink.onclick = () => openGuide('game');
+    guideLink.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openGuide('game');
+      }
+    };
+  }
   // 摸鱼小窗入口显隐由 <head> 预渲染脚本 + CSS(.slack-only) 在首屏前定稿，避免加载后闪烁；此处仅绑定事件
   if (SLACK_ENABLED) {
     $('btn-mini').onclick = confirmOpenMini;

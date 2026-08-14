@@ -80,6 +80,7 @@
               <button class="btn btn-ghost" id="btn-leaderboard">排行榜</button>
             </div>
             <button class="btn btn-ghost btn-block" id="btn-settings">设置</button>
+            <button class="btn btn-ghost btn-block" id="btn-guide">玩法指南</button>
             <button class="btn btn-ghost btn-block slack-only" id="btn-mini"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01"></path></svg>摸鱼小窗（独立窗口）</button>
             <p class="menu-foot" id="menu-stat"></p>
           </div>
@@ -114,6 +115,7 @@
               <button class="tool" id="btn-check"><span class="tool-ico">🔍</span><span>检查</span></button>
             </div>
             <p class="pad-hint">数字盘：普通模式单击=回填，笔记模式/Ctrl+单击=记候选（双击强制填入）　|　单元格候选：单击切换（添加/取消）· 双击回填</p>
+            <p class="guide-entry"><a id="game-guide-link" role="button" tabindex="0">玩法 · 规则 · 技巧说明 ›</a></p>
           </div>
           <div class="game-actions">
             <button class="btn btn-ghost" id="btn-restart">重开本局</button>
@@ -211,6 +213,34 @@
             </div>
           </div>
         </section>
+        <!-- 玩法指南 -->
+        <section class="screen hidden" id="screen-guide">
+          <div class="screen-head">
+            <h2>玩法指南</h2>
+            <button class="btn btn-ghost btn-sm" id="btn-guide-back">返回</button>
+          </div>
+          <div class="guide">
+            <section class="guide-block">
+              <h3>一、起源</h3>
+              <p>数独（Sudoku）的前身是 18 世纪瑞士的“拉丁方块”。现代形态由美国建筑师 Howard Garns 于 1979 年设计，1984 年由日本公司 Nikoli 命名为“数独”（读作 Su-doku，意为“数字必须单独”，即每个数字在单元内唯一）。1997 年传入欧美后风靡全球，成为最流行的逻辑益智游戏之一。</p>
+            </section>
+            <section class="guide-block">
+              <h3>二、玩法与规则</h3>
+              <p>在一个 9×9 的方格中，已预先填入部分数字（称为“题目”或“提示数”）。你的目标：把剩余空格填满，使<strong>每一行、每一列、每一个 3×3 的粗线宫格</strong>内都恰好包含数字 1–9 各一次，不重不漏。</p>
+              <ul class="guide-rules">
+                <li>共有 9 行、9 列、9 个宫，每个单元 9 格。</li>
+                <li>最终每个单元都必须含 1–9 且不重复。</li>
+                <li>题目保证<strong>有且仅有一个解</strong>，靠纯逻辑推理即可填满，无需猜测。</li>
+              </ul>
+            </section>
+            <section class="guide-block">
+              <h3>三、解题技巧 L0–L9</h3>
+              <p class="guide-note">本游戏按“解开本局所需的最难技巧”划分难度。下面从最基础到最进阶共 10 级，每级都配有举例：</p>
+              <div class="tech-list" id="guide-tech-list"></div>
+            </section>
+          </div>
+        </section>
+
       </main>
 
       <div id="modal-root"></div>

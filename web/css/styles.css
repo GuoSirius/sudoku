@@ -370,11 +370,13 @@ body {
 .cell.samenum:not(.given):not(.selected):not(.wrong):not(.conflict) {
   background: var(--samenum);
 }
-/* 固有格的同值高亮:保留灰底(不覆盖 given 语义),用同色内描边叠加,既「全亮」又可与填入格区分 */
+/* 固有格的同值高亮:保留 given 灰底语义,但叠加 samenum 色调 + 更明亮的 3px 描边,
+   既「全亮」又可与填入格区分,且在深浅主题下都清晰可辨（选中数字时一眼认出同值固有格） */
 .cell.given.samenum:not(.selected) {
-  background: var(--given);
+  background: color-mix(in srgb, var(--samenum) 40%, var(--given));
   color: var(--given-text);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--samenum) 72%, var(--given));
+  font-weight: 800;
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--primary) 80%, var(--given));
 }
 /* 焦点:当前选中格(最强) */
 .cell.selected {
@@ -1399,4 +1401,108 @@ body.boss #boss-screen {
   50% {
     opacity: 0;
   }
+}
+
+/* ============ 玩法指南 ============ */
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.guide-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+.guide-block h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.guide-block p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.guide-block p:last-child {
+  margin-bottom: 0;
+}
+.guide-rules {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.guide-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+.tech-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tech-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.tech-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tech-lv {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 6px;
+  padding: 2px 8px;
+  flex: 0 0 auto;
+}
+.tech-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.tech-short {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.tech-desc {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.tech-ex {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* 游戏界面底部：玩法指南入口（小字文字链接，不挤占棋盘与控制区） */
+.guide-entry {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 12px;
+}
+.guide-entry a {
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
+  padding-bottom: 1px;
+}
+.guide-entry a:hover,
+.guide-entry a:focus {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  outline: none;
 }
