@@ -97,31 +97,55 @@ function digKeepingUnique(solution, removals) {
 
 console.log(`\n评级器求解正确性：${passed} 通过 / ${failed} 失败`);
 
-// 5) 生成契约：每个难度生成的盘面都满足 grade ≤ 目标层级、唯一解、且与暴力解一致
+// 5) 生成契约：每难度生成的盘面满足 grade≤level、唯一解、与暴力解一致，且(非入门)clues 落入区间
 import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
 
 {
-  const PER = 8;
+  const PER = 20;
   const maxGrade = {};
+  const sumClues = {};
+  let windowOk = true;
   for (const d of DIFFICULTIES) {
     const dist = {};
     let okAll = true;
     for (let t = 0; t < PER; t++) {
-      const { puzzle, solution, grade: g } = makePuzzle(d.id);
+      const { puzzle, solution, grade: g, clues } = makePuzzle(d.id);
       const uniq = hasUniqueSolution(puzzle);
       const bf = bruteForce(puzzle);
       const match = bf && bf.join('') === solution.join('');
-      if (!(g <= d.level && uniq && match)) okAll = false;
+      const inWindow = d.level === 0 || (clues >= d.cluesMin && clues <= d.cluesMax);
+      if (!(g <= d.level && uniq && match && inWindow)) okAll = false;
+      if (!inWindow) windowOk = false;
       dist[g] = (dist[g] || 0) + 1;
       maxGrade[d.id] = Math.max(maxGrade[d.id] || 0, g);
+      sumClues[d.id] = (sumClues[d.id] || 0) + clues;
     }
-    assert(okAll, `${d.label}：每局都应 grade≤${d.level} 且唯一解且与暴力解一致`);
-    console.log(`  · ${d.label} 评级分布(样本${PER}):`, JSON.stringify(dist));
+    assert(
+      okAll,
+      `${d.label}：每局应 grade≤${d.level} 且唯一解且与暴力解一致且(非入门)clues∈[${d.cluesMin},${d.cluesMax}]`
+    );
+    console.log(
+      `  · ${d.label} 评级分布(样本${PER}):`,
+      JSON.stringify(dist),
+      'clues区间',
+      d.level === 0 ? 'N/A(入门)' : `[${d.cluesMin},${d.cluesMax}]`
+    );
   }
-  // 正向信号：高档位应确实用到对应技巧（拒绝采样生效）
-  assert(maxGrade.easy >= 1, `简单档应出现需「唯一候选」的盘（观测 ${maxGrade.easy}）`);
-  assert(maxGrade.expert >= 4, `专家档应出现需「区块/三数」的盘（观测 ${maxGrade.expert}）`);
+  assert(windowOk, '所有非入门档 clues 都应落入各自区间');
+  // 正向信号：难度递增应反映到「空格数主轴」(c+g 中真正拉开梯度的维度)，且高档位稳定命中高阶技巧。
+  // 说明：本评级器对绝大多数盘只评到 grade 1~2（grade 在简单/中等/困难间几乎不区分），
+  // 故档间差异主要由 clues 区间承担；grade 维度主要用于保证不超档 + 专家/极限封顶。
+  const avgClues = {};
+  for (const d of DIFFICULTIES) avgClues[d.id] = sumClues[d.id] / PER;
+  console.log(
+    '  · 各档平均 clues:',
+    DIFFICULTIES.map((d) => `${d.label}=${avgClues[d.id].toFixed(1)}`).join('  ')
+  );
+  assert(avgClues.easy > avgClues.medium, '简单应比中等更满(空格更少)');
+  assert(avgClues.medium > avgClues.hard, '中等应比困难更满');
+  assert(avgClues.hard > avgClues.expert, '困难应比专家更满');
   assert(maxGrade.master >= 9, `极限档应出现需「XY-Wing」的盘（观测 ${maxGrade.master}）`);
+  assert(maxGrade.expert >= 4, `专家档应出现需「区块/三数」的盘（观测 ${maxGrade.expert}）`);
 }
 
 console.log(`\n评级器 + 生成契约：${passed} 通过 / ${failed} 失败`);
