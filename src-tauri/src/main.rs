@@ -72,34 +72,9 @@ fn main() {
                 .register(Shortcut::new(Some(Modifiers::ALT), Code::KeyS))
                 .unwrap();
 
-            // Release 构建时优先加载线上地址，无网或失败则回退到打包的本地资源
-            #[cfg(not(debug_assertions))]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                let online_url = "https://sudoku-3ss.pages.dev".to_string();
-                tauri::async_runtime::spawn(async move {
-                    let url_for_check = online_url.clone();
-                    let reachable = tauri::async_runtime::spawn_blocking(move || {
-                        ureq::get(&url_for_check)
-                            .timeout(std::time::Duration::from_secs(3))
-                            .call()
-                            .map(|r| r.status() == 200)
-                            .unwrap_or(false)
-                    })
-                    .await
-                    .unwrap_or(false);
-                    if reachable {
-                        if let Ok(url) = online_url.parse() {
-                            let _ = window.navigate(url);
-                        }
-                    } else {
-                        let _ = window.emit(
-                            "offline-mode",
-                            "当前使用本地离线资源，线上版本可能已更新，建议联网后重启应用获取最新版本。",
-                        );
-                    }
-                });
-            }
+            // 桌面端始终使用打包进 exe 的本地 web/ 资源（已在 tauri.conf.json 的
+            // frontendDist 中嵌入），不依赖任何外部站点，保证离线可用、启动稳定。
+            // 版本更新由 tauri-plugin-updater 负责（设置页「检查更新」）。
 
             Ok(())
         })

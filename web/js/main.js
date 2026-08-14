@@ -1494,7 +1494,6 @@ async function initTauriBridge() {
   try {
     const { listen } = await import('@tauri-apps/api/event');
     await listen('boss-toggle', () => toggleBoss());
-    await listen('offline-mode', (e) => toast(e.payload));
     await listen('mini-toggle', () => {
       const on = document.body.classList.toggle('mini');
       if (on) {
