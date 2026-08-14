@@ -104,6 +104,8 @@ globalThis.document = {
     (docListeners[t] = docListeners[t] || []).push(fn);
   },
 };
+// 模拟 index.html <head> 同步脚本：本桩 matchMedia 全返回 false → 非触摸设备 → 桌面端 → 应加 .slack 类
+globalThis.document.documentElement.classList.add('slack');
 const store = {};
 globalThis.localStorage = {
   getItem: (k) => (k in store ? store[k] : null),

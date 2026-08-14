@@ -27,9 +27,9 @@ const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label ||
 //  - 触摸手持设备（手机/平板，横竖屏，浏览器或 PWA）：不需要（无独立窗口、无实体老板键）
 //  - 桌面浏览器 / 桌面 PWA：需要
 // 已开启的迷你窗(?mini=1)与伪装屏(.boss)仍照常生效，不回退。
-const IS_TOUCH_DEVICE =
-  window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(hover: none)').matches;
-const SLACK_ENABLED = isTauri() || (!IS_TOUCH_DEVICE && !isCapacitor());
+// 判定结果由 index.html <head> 同步脚本在首屏前写入 <html>.slack（单一真源），
+// 此处直接读取，避免与 CSS 判定漂移；JS 仅据此绑定事件，不负责显隐。
+const SLACK_ENABLED = document.documentElement.classList.contains('slack');
 
 // ---------------- 主题 ----------------
 // 主题类挂在 <html>（documentElement）上：CSS 变量从根向下覆盖整个文档，
@@ -1218,12 +1218,9 @@ function renderSettings() {
         mwrap.appendChild(b);
     });
   }
-  // 摸鱼伪装语言：前端 / PHP / Java / Python（仅桌面端有意义，移动端/PWA 隐藏整组）
+  // 摸鱼伪装语言：前端 / PHP / Java / Python（入口整组由 CSS .slack-only 控制，仅桌面端构建可选项）
   const bwrap = $('set-bosslang');
-  if (bwrap) {
-    const langGroup = bwrap.closest?.('.setting-group');
-    if (!SLACK_ENABLED && langGroup) langGroup.style.display = 'none';
-    else {
+  if (bwrap && SLACK_ENABLED) {
     bwrap.innerHTML = '';
     [
       ['frontend', 'Vue'],
@@ -1242,7 +1239,6 @@ function renderSettings() {
       };
       bwrap.appendChild(b);
     });
-    }
   }
   // 更新检测：启动时自动 / 手动 / 关闭
   const uwrap = $('set-update-check');
@@ -1369,19 +1365,10 @@ function init() {
   };
   $('btn-leaderboard-back').onclick = () => showScreen('menu');
   $('btn-settings-back').onclick = () => showScreen('menu');
-  // 摸鱼小窗仅桌面端有意义：移动端/PWA 隐藏入口（已开启的迷你窗仍照常渲染）
+  // 摸鱼小窗入口显隐由 <head> 预渲染脚本 + CSS(.slack-only) 在首屏前定稿，避免加载后闪烁；此处仅绑定事件
   if (SLACK_ENABLED) {
     $('btn-mini').onclick = confirmOpenMini;
     $('btn-settings-mini').onclick = confirmOpenMini;
-  } else {
-    const bm = $('btn-mini');
-    if (bm) bm.style.display = 'none';
-    const bsm = $('btn-settings-mini');
-    if (bsm) {
-      bsm.style.display = 'none';
-      const group = bsm.closest?.('.setting-group');
-      if (group) group.style.display = 'none'; // 整组（标题+按钮）一并隐藏更干净
-    }
   }
 
   $('rp-first').onclick = () => {

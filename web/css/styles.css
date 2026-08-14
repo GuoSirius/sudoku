@@ -308,6 +308,7 @@ body {
 .board {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
   gap: 0;
   aspect-ratio: 1 / 1;
   width: 100%;
@@ -357,7 +358,8 @@ body {
 .cell.peer:not(.given) {
   background: var(--peer);
 }
-.cell.samenum:not(.given) {
+/* 同值高亮：覆盖全部同数字格（含固有格），保证选中任一数字时所有相同数字一致高亮，不会“只亮一半” */
+.cell.samenum {
   background: var(--samenum);
 }
 .cell.selected {
@@ -404,6 +406,13 @@ body {
 }
 .cell .notes span:hover {
   background: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+
+/* 摸鱼入口（小窗按钮 / 老板键伪装组）：仅桌面端显示。
+   显隐判定由 index.html <head> 同步脚本在首屏前给 <html> 打 .slack 类，
+   此处默认隐藏，避免 JS 加载后再 display:none 造成的首屏闪烁。 */
+html:not(.slack) .slack-only {
+  display: none !important;
 }
 
 /* 暂停：非阻塞横幅（位于棋盘上方，不遮挡棋盘，棋盘保留可见） */
