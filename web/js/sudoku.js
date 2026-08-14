@@ -11,7 +11,7 @@ export const SIZE = 9;
 // 入门(level 0) 特殊：用 digCap(0) 只保留唯一余数可解，产出的盘 grade 恰为 0、clues 自然偏多。
 // hints 用于难度选择弹窗，告诉玩家这一档在练什么。
 export const DIFFICULTIES = [
-  { id: 'beginner', label: '入门', level: 0, cluesMin: 48, cluesMax: 56, hint: '仅唯一余数，最适合新手建立信心' },
+  { id: 'beginner', label: '入门', level: 0, cluesMin: 46, cluesMax: 54, hint: '仅唯一余数，最适合新手建立信心' },
   { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '唯一候选，稳定上手' },
   { id: 'medium', label: '中等', level: 2, cluesMin: 36, cluesMax: 40, hint: '数对（Naked/Hidden Pair）' },
   { id: 'hard', label: '困难', level: 3, cluesMin: 31, cluesMax: 35, hint: '隐性数对（Hidden Pair）' },
@@ -123,16 +123,19 @@ function maximalDig() {
   }
   return { puzzle, solution };
 }
-// 按技巧上限挖空：仅保留「用 ≤cap 技巧仍唯一可解」的挖法，用于入门档
-function digCap(cap) {
+// 按技巧上限挖空：仅保留「用 ≤cap 技巧仍唯一可解」的挖法，用于入门档。
+// floor 为「最少提示数」：挖到 clues ≤ floor 即停止，从而保留较多提示、看着就简单（不挖到最稀疏）。
+function digCap(cap, floor = 0) {
   const solution = generateSolved();
   const puzzle = solution.slice();
+  let clues = 81;
   const order = shuffle([...Array(81).keys()]);
   for (const idx of order) {
-    if (puzzle[idx] === 0) continue;
+    if (clues <= floor) break; // 已保留足够多提示，停止挖空
     const backup = puzzle[idx];
     puzzle[idx] = 0;
     if (!logicSolve(puzzle, cap).solved) puzzle[idx] = backup;
+    else clues--;
   }
   const g = grade(puzzle);
   return { puzzle, solution, grade: g, clues: puzzle.filter((v) => v !== 0).length };
@@ -142,7 +145,7 @@ export function makePuzzle(difficulty = 'medium') {
   const def = DIFFICULTY_BY_ID[difficulty] || DIFFICULTY_BY_ID.medium;
   const level = def.level;
   const { cluesMin, cluesMax } = def;
-  if (level === 0) return digCap(0); // 入门：保证 grade 0、clues 偏多（不变）
+  if (level === 0) return digCap(0, def.cluesMin); // 入门：保证 grade 0、且保留较多提示（看着就简单）
   // 极限(level 9)：挖到最稀疏且逻辑可解(=唯一解) 的盘面；优先选「需 XY-Wing(grade 9)」的盘，
   // 命中即采用，否则取评级最高者。clues 由挖空自然决定（约 21~29）。
   if (level === 9) {
