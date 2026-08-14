@@ -84,7 +84,7 @@ assert(!elements['screen-game'].classList.contains('hidden'), '刷新后停留�
 assert(elements['screen-menu'].classList.contains('hidden'), '刷新后不在首页');
 assert(elements['board'].children.length === 81, '游戏棋盘已渲染（81 格）');
 assert(!elements['pause-overlay'].classList.contains('hidden'), '暂停态刷新后保留暂停遮罩');
-assert(elements['game-difficulty'].textContent === '简单', '恢复的对局难度正确');
+assert(elements['game-difficulty'].textContent.startsWith('简单'), '恢复的对局难度正确（显示「简单·技巧」徽章）');
 
 console.log(`\n刷新恢复专项: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

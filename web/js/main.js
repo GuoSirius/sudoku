@@ -1,7 +1,8 @@
 // 应用主控制器：路由、菜单、对局交互、历史、复盘、排行榜、设置、PWA
 import { Game } from './game.js';
 import { storage } from './storage.js';
-import { DIFFICULTIES, formatTime } from './sudoku.js';
+import { DIFFICULTIES, DIFFICULTY_BY_ID, formatTime } from './sudoku.js';
+import { techniqueShort } from './grader.js';
 import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
@@ -20,6 +21,14 @@ let replayPlayId = null;
 let toastTimer = null;
 
 const diffLabel = (id) => (DIFFICULTIES.find((d) => d.id === id) || {}).label || id;
+
+// 标题徽章：难度关键词 + 极简短技巧（整体 ≤6 字）；无技巧信息时仅显难度
+const diffBadge = (id, grade) => {
+  const label = diffLabel(id);
+  const lvl = grade != null ? grade : (DIFFICULTY_BY_ID[id] || {}).level;
+  const short = techniqueShort(lvl);
+  return short ? `${label}·${short}` : label;
+};
 
 // 摸鱼（小窗 + 老板键）：仅桌面端有意义。判定矩阵：
 //  - 桌面应用(Tauri)：永远需要（isTauri，即使触屏平板模式也有全局快捷键）
@@ -347,7 +356,7 @@ function renderGame() {
     onNoteClick
   );
   renderPad();
-  $('game-difficulty').textContent = diffLabel(game.difficulty);
+  $('game-difficulty').textContent = diffBadge(game.difficulty, game.grade);
   $('game-timer').textContent = formatTime(game.currentElapsed());
   $('game-mistakes').textContent = game.mistakes;
   $('game-remaining').textContent = game.remaining();
@@ -553,7 +562,7 @@ function openDifficultyModal(onPick) {
   DIFFICULTIES.forEach((d) => {
     const b = document.createElement('button');
     b.className = 'seg-btn' + (d.id === cur.difficulty ? ' active' : '');
-    b.textContent = d.label;
+    b.textContent = diffBadge(d.id, d.level);
     b.onclick = () => {
       closeModal();
       onPick(d.id);

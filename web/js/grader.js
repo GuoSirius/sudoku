@@ -459,6 +459,26 @@ export const TECHNIQUE_NAMES = [
 // 实现覆盖到 XY-Wing(L9)。自然随机盘的技巧评级集中在 0~4 与 9（需进阶链），
 // 5~8 级（三数/X-Wing/剑鱼）极少被随机盘直接需要；难度档据此映射到 0/1/2/3/4/9。
 
+// 简短技巧名（≤3 字），用于界面徽章，与难度标签组合后整体 ≤6 字
+export const TECH_SHORT_NAMES = [
+  '余数', // 0 唯一余数
+  '候选', // 1 唯一候选
+  '数对', // 2 数罪对
+  '隐对', // 3 隐性数对
+  '区块', // 4 区块摒除
+  '三数', // 5 三数
+  '隐三', // 6 隐性三数
+  'X翼', // 7 X-Wing
+  '剑鱼', // 8 剑鱼
+  'XY翼', // 9 XY-Wing
+];
+
+// 返回极简短技巧名（用于标题徽章）；level 越界时回退为空串
+export function techniqueShort(level) {
+  if (level == null || level < 0 || level >= TECH_SHORT_NAMES.length) return '';
+  return TECH_SHORT_NAMES[level];
+}
+
 // ---------------- 求解与评级 ----------------
 // 仅用层级 0..maxLevel 的技巧尝试求解；返回是否解出、最难用到层级、最终盘面
 export function logicSolve(puzzle, maxLevel) {
