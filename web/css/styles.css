@@ -330,7 +330,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
   overflow: hidden;
-  transition: background 0.12s;
+  transition: background 0.12s, box-shadow 0.12s;
   user-select: none;
 }
 .cell.bl {
@@ -345,6 +345,14 @@ body {
 .cell.bb {
   border-bottom: 2px solid var(--primary);
 }
+/* ===== 棋盘格子状态体系 =====
+   优先级(强→弱): selected > wrong/conflict > samenum > peer > given > 默认
+   设计要点:
+   - 辅助高亮 peer / samenum 一律用 :not(.selected):not(.wrong):not(.conflict) 守卫,
+     绝不压住「焦点」与「错误/冲突」提示;
+   - 同值高亮(samenum)写在 peer 之后,优先级高于同行列宫高亮(peer):同值更具体、应更醒目;
+   - 固有格(given)的同值高亮保留灰底、改用同色内描边,既「全亮」又与填入格区分,
+     不覆盖 given 语义(这是当初 :not(.given) 在保护的东西,改为描边而非背景覆盖)。 */
 .cell.given {
   background: var(--given);
   color: var(--given-text);
@@ -354,14 +362,21 @@ body {
 .cell:not(.given) {
   color: var(--filled-text);
 }
-/* 同行/列/宫高亮：只作用于可填格，固有格始终保留自己的灰底，避免高亮时混淆「固有/填入」 */
-.cell.peer:not(.given) {
+/* 同行/列/宫辅助高亮(最弱) */
+.cell.peer:not(.given):not(.selected):not(.wrong):not(.conflict) {
   background: var(--peer);
 }
-/* 同值高亮：覆盖全部同数字格（含固有格），保证选中任一数字时所有相同数字一致高亮，不会“只亮一半” */
-.cell.samenum {
+/* 同值高亮:可填格用淡底,且压过 peer */
+.cell.samenum:not(.given):not(.selected):not(.wrong):not(.conflict) {
   background: var(--samenum);
 }
+/* 固有格的同值高亮:保留灰底(不覆盖 given 语义),用同色内描边叠加,既「全亮」又可与填入格区分 */
+.cell.given.samenum:not(.selected) {
+  background: var(--given);
+  color: var(--given-text);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--samenum) 72%, var(--given));
+}
+/* 焦点:当前选中格(最强) */
 .cell.selected {
   background: var(--selected);
   color: #ffffff;
@@ -371,10 +386,11 @@ body {
 .cell.selected .notes {
   color: rgba(255, 255, 255, 0.82);
 }
-/* 可点击（非固有、非选中、非错误）格子在桌面端悬停时给出轻微反馈 */
+/* 可点击(非固有、非选中、非错误)格子在桌面端悬停时给出轻微反馈 */
 .cell:not(.given):not(.selected):not(.conflict):not(.wrong):hover {
   background: var(--cell-hover);
 }
+/* 错误 / 冲突(次强,红底提示) */
 .cell.conflict,
 .cell.wrong {
   background: var(--conflict);
