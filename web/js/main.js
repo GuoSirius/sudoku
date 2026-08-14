@@ -492,6 +492,9 @@ function afterMove() {
 }
 
 function startNewGame(diff) {
+  // 真正开始新局前才归档「进行中」旧局为「未完成」历史；
+  // 若用户在难度选择弹窗点「取消」，旧局不受影响、首页「继续」仍可用。
+  archiveCurrent();
   game = Game.newGame(diff);
   noteMode = false;
   $('btn-notes').classList.remove('active');
@@ -545,7 +548,6 @@ function newGameFlow() {
           label: '开始新游戏',
           primary: true,
           onClick: () => {
-            archiveCurrent();
             openDifficultyModal(startNewGame);
           },
         },
