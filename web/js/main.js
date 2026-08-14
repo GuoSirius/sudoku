@@ -202,11 +202,11 @@ function showScreen(name) {
   else if (name === 'history') renderHistory();
   else if (name === 'leaderboard') renderLeaderboard();
   else if (name === 'settings') renderSettings();
-  // 复盘是历史的子页，由 openReplay 负责渲染；持久化时记成 history
-  const persist = name === 'replay' ? 'history' : name;
-  if (['menu', 'game', 'history', 'leaderboard', 'settings'].includes(persist)) {
+  // 所有页面统一持久化，刷新后都能停留在当前页（复盘是历史的子页，也记成 replay，靠 replayId 还原）
+  const PERSIST_SCREENS = ['menu', 'game', 'history', 'leaderboard', 'settings', 'guide', 'replay'];
+  if (PERSIST_SCREENS.includes(name)) {
     try {
-      localStorage.setItem('sudoku:screen', persist);
+      localStorage.setItem('sudoku:screen', name);
     } catch (e) {}
   }
 }
@@ -214,9 +214,11 @@ function showScreen(name) {
 // 刷新/重开时恢复到上次停留的页面（有进行中对局则一并恢复）
 function restoreScreen() {
   renderMenu(); // 同步首页「继续」按钮与统计（即使当前不显示首页）
-  let saved = null;
+  let saved = null, replayId = null, guideReturnSaved = null;
   try {
     saved = localStorage.getItem('sudoku:screen');
+    replayId = localStorage.getItem('sudoku:replayId');
+    guideReturnSaved = localStorage.getItem('sudoku:guideReturn');
   } catch (e) {}
   const cur = storage.getCurrent();
   if (saved === 'game' && cur && cur.status !== 'won') {
@@ -230,6 +232,32 @@ function restoreScreen() {
       $('btn-pause').title = '继续';
     }
     enterGame();
+    return;
+  }
+  // 复盘：凭 replayId 找回历史记录并重放开局（找不到记录则回退到历史列表）
+  if (saved === 'replay' && replayId) {
+    const rec = (storage.getHistory() || []).find((r) => String(r.id) === String(replayId));
+    if (rec) {
+      openReplay(rec);
+      return;
+    }
+  }
+  // 玩法指南：恢复展示；若仍有进行中对局则载入上下文，保证「返回游戏」可恢复棋盘与计时
+  if (saved === 'guide') {
+    guideReturn = guideReturnSaved || 'menu';
+    if (cur && cur.status !== 'won') {
+      game = Game.fromJSON(cur);
+      noteMode = false;
+      $('btn-notes').classList.remove('active');
+      if (game.status === 'paused') {
+        $('pause-overlay').classList.remove('hidden');
+        $('board').classList.add('paused');
+        $('btn-pause').textContent = '▶';
+        $('btn-pause').title = '继续';
+      }
+    }
+    renderGuide();
+    showScreen('guide');
     return;
   }
   if (saved === 'history' || saved === 'leaderboard' || saved === 'settings') {
@@ -931,6 +959,7 @@ function renderGuide() {
 // 打开玩法指南：记录来源页面；从游戏进入时先冻结计时（不计入指南停留时间），返回时再恢复
 function openGuide(from) {
   guideReturn = from || 'menu';
+  try { localStorage.setItem('sudoku:guideReturn', guideReturn); } catch (e) {}
   if (from === 'game' && game && game.status === 'playing') game.pauseTimer();
   renderGuide();
   showScreen('guide');
@@ -980,6 +1009,7 @@ function openReplay(record) {
   replayRec = record;
   replayStep = 0;
   stopReplay();
+  try { localStorage.setItem('sudoku:replayId', String(record.id)); } catch (e) {}
   showScreen('replay');
   renderReplayInfo();
   renderReplayStep();
