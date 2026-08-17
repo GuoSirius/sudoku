@@ -1235,7 +1235,7 @@ body.mini .game-top #btn-pause {
   font-size: 14px;
 }
 body.mini #main {
-  padding-top: 4px;
+  padding-top: 46px; /* 为固定置顶的迷你导航让出空间 */
 }
 body.mini .pad-hint {
   display: none;
@@ -1252,16 +1252,28 @@ body.mini .game-actions .btn {
 }
 /* 摸鱼小窗导航条：替代被隐藏的 appbar，支持在小窗内自由跳页 */
 .mini-only { display: none; }
+/* 破出 #app 的 360px 上限，横向铺满整个小窗；项数过多时允许横向滚动 */
 body.mini .mini-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   display: flex;
   gap: 4px;
   padding: 6px 8px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
-  justify-content: space-around;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+body.mini .mini-nav::-webkit-scrollbar { height: 4px; }
+body.mini .mini-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .mini-nav .mn-btn {
-  flex: 1;
+  flex: 1 0 56px; /* 项数少时铺满整屏；项数多(超出)时保持最小宽并横向滚动 */
+  min-width: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1272,6 +1284,7 @@ body.mini .mini-nav {
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  white-space: nowrap;
 }
 .mini-nav .mn-btn span { font-size: 10px; line-height: 1; }
 .mini-nav .mn-btn:hover,

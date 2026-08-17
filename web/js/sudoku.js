@@ -14,10 +14,10 @@ export const SIZE = 9;
 export const DIFFICULTIES = [
   { id: 'beginner', label: '入门', level: 0, cluesMin: 46, cluesMax: 54, hint: '仅唯一余数，最适合新手建立信心' },
   { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '唯一余数与候选，轻松上手' },
-  { id: 'medium', label: '中等', level: 2, cluesMin: 36, cluesMax: 40, hint: '每局技巧组合不同，含数对/区块等，常有变化' },
-  { id: 'hard', label: '困难', level: 3, cluesMin: 31, cluesMax: 35, hint: '每局不同，偶尔出现 X-Wing / XY-Wing 进阶' },
-  { id: 'expert', label: '专家', level: 4, cluesMin: 27, cluesMax: 30, hint: '偶发区块摒除 / 三数 / X-Wing，硬核进阶' },
-  { id: 'master', label: '极限', level: 9, cluesMin: 21, cluesMax: 29, hint: 'XY-Wing 级进阶逻辑，硬核烧脑' },
+  { id: 'medium', label: '中等', level: 2, cluesMin: 33, cluesMax: 37, hint: '每局技巧组合不同，含数对 / 区块 / 区块摒除，常有变化' },
+  { id: 'hard', label: '困难', level: 3, cluesMin: 28, cluesMax: 32, hint: '每局不同，常出现 X-Wing / XY-Wing 进阶' },
+  { id: 'expert', label: '专家', level: 4, cluesMin: 24, cluesMax: 27, hint: '区块摒除 / 三数 / X-Wing，硬核进阶' },
+  { id: 'master', label: '极限', level: 9, cluesMin: 20, cluesMax: 26, hint: 'XY-Wing 级进阶逻辑，硬核烧脑' },
 ];
 export const DIFFICULTY_BY_ID = Object.fromEntries(DIFFICULTIES.map((d) => [d.id, d]));
 
@@ -155,7 +155,7 @@ export function makePuzzle(difficulty = 'medium') {
   // 极限(level 9)：挖到最稀疏且逻辑可解(=唯一解)；优先选需 XY-Wing(grade 9) 的盘，命中即采用
   if (level === 9) {
     let best = null;
-    const TRIES = 40;
+    const TRIES = 56; // 加大尝试次数，更稳地命中高评级盘，使「极限」名副其实地最难
     for (let i = 0; i < TRIES; i++) {
       const { puzzle, solution } = maximalDig();
       const res = logicSolve(puzzle, MAX_LEVEL);
@@ -173,7 +173,9 @@ export function makePuzzle(difficulty = 'medium') {
   // 中等/困难 加 18%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
   // 从而「中等甚至能用 X/XY」、每局解法组合不写死。
   let target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
-  if ((difficulty === 'medium' || difficulty === 'hard') && Math.random() < 0.18) {
+  // 困难档保留 18%「稀疏奖励」：偶发降到 26 提示数，可触达 X-Wing / XY-Wing 等进阶技巧，增添变化；
+  // 中等档不再享受该奖励，保证稳定落在 33~37 区间、与「中等」标签一致。
+  if (difficulty === 'hard' && Math.random() < 0.18) {
     target = 26;
   }
   return digToTarget(target);
