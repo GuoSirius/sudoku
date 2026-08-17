@@ -130,24 +130,42 @@ export function warmUpAudio() {
 //   gainPeak 为“相对振幅”(0~1)，会经 master gain(=全局音量) 统一缩放，无需在此乘 volume。
 //   attack 用极短线性抬升避免爆音咔哒；之后指数衰减，尾音干净、听感清晰。
 function blip(type, freq, dur, gainPeak, when = 0, slideTo = null) {
-  const ac = resumeCtx();
+  const ac = ensureCtx();
   if (!ac || !master) return;
-  try {
-    const peak = Math.max(0.0001, gainPeak);
-    const t0 = ac.currentTime + Math.max(when, 0) + SCHEDULE_AHEAD;
-    const osc = ac.createOscillator();
-    const g = ac.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-    const attack = 0.006;
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g).connect(master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.03);
-  } catch (e) {}
+  const run = () => {
+    try {
+      const peak = Math.max(0.0001, gainPeak);
+      const t0 = ac.currentTime + Math.max(when, 0) + SCHEDULE_AHEAD;
+      const osc = ac.createOscillator();
+      const g = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      const attack = 0.006;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g).connect(master);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  };
+  if (ac.state === 'running') {
+    // 已运行：直接按当前（活动）时钟调度，立即可靠发声
+    run();
+  } else {
+    // 被挂起（首声响 / 后台切回 / 一段时间无音频后浏览器自动挂起）：
+    // 必须先 resume，并**等其真正 running 之后**再按 currentTime 调度。
+    // 否则按“冻结的 currentTime”调度，浏览器 resume 后常把时钟重置回 ~0，
+    // 音符会被排到数秒后的“未来时刻”——表现为这声响没出来、下一声响又正常（即“时有时无”）。
+    try {
+      const p = ac.resume();
+      if (p && typeof p.then === 'function') p.then(run).catch(run);
+      else run();
+    } catch (e) {
+      run();
+    }
+  }
 }
 
 // 落子：清脆短“嗒”，三角波明亮、听感清楚
