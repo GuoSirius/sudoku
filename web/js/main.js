@@ -7,7 +7,7 @@ import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
-import { playPlace, playErase, playWrong, playWin, isSoundOn, setSoundOn } from './sound.js';
+import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
@@ -501,7 +501,7 @@ function useHint() {
     toast('请先选择一个空格');
     return;
   }
-  if (game.hint(game.selected)) { afterMove(); feedbackPlace(game.selected, game.solution[game.selected]); }
+  if (game.hint(game.selected)) { afterMove(); feedbackPlace(game.selected, game.solution[game.selected]); playHint(); }
   else toast('该格无需提示');
 }
 // 手动「检查」：按需揭示错误并计错（游戏中零自动泄题，想核对时再核对）
@@ -510,6 +510,7 @@ function doCheck() {
   game.revealWrong(); // 累计揭示（计错 + 持续标红）
   saveCurrent();
   renderGame();
+  playCheck();
   // 反馈当前盘面错误总数（非本次新增），避免二次检查误报“没问题”
   const total = game.currentWrongCount();
   toast(total > 0 ? `发现 ${total} 处错误` : '没有发现错误');
@@ -1488,6 +1489,14 @@ function renderSettings() {
       swrap.appendChild(b);
     });
   }
+  // 音量滑块：回填当前音量（拖动绑定在 init 中一次性完成）
+  const volEl = $('set-volume');
+  if (volEl) {
+    const v = Math.round(getVolume() * 100);
+    volEl.value = String(v);
+    const vlbl = $('set-volume-val');
+    if (vlbl) vlbl.textContent = v + '%';
+  }
   // 摸鱼伪装语言：前端 / PHP / Java / Python（入口整组由 CSS .slack-only 控制，仅桌面端构建可选项）
   const bwrap = $('set-bosslang');
   if (bwrap && SLACK_ENABLED) {
@@ -1606,6 +1615,35 @@ function init() {
     }
     showScreen('menu');
   };
+  // 摸鱼小窗内的页面跳转：离开对局先暂停计时并保留进度（与 btn-home 一致），返回对局自动恢复计时
+  function miniNavTo(name) {
+    if (name !== 'game' && game && game.status === 'playing') {
+      game.pauseTimer();
+      game.status = 'paused';
+      saveCurrent();
+    }
+    if (name === 'game') {
+      if (game && game.status !== 'won') {
+        showScreen('game');
+        if (game.status === 'paused') game.resumeTimer();
+        $('pause-overlay').classList.add('hidden');
+        $('board').classList.remove('paused');
+        $('btn-pause').textContent = '⏸';
+        $('btn-pause').title = '暂停';
+        renderGame();
+        startTimerLoop();
+      } else {
+        startNewGame(storage.getSettings().difficulty || 'easy');
+      }
+      return;
+    }
+    if (name === 'guide') { openGuide('game'); return; }
+    showScreen(name);
+  }
+  ['game', 'home', 'history', 'leaderboard', 'settings', 'guide'].forEach((p) => {
+    const b = $('mn-' + p);
+    if (b) b.onclick = () => miniNavTo(p);
+  });
   $('btn-resume').onclick = resumeGame;
   $('btn-new').onclick = newGameFlow;
   $('btn-history').onclick = () => showScreen('history');
@@ -1658,6 +1696,16 @@ function init() {
         e.preventDefault();
         openGuide('game');
       }
+    };
+  }
+  // 音量滑块：拖动即时调整并持久化（仅在元素存在时绑定一次）
+  const volEl = $('set-volume');
+  if (volEl) {
+    volEl.oninput = () => {
+      const v = parseInt(volEl.value, 10) || 0;
+      setVolume(v / 100);
+      const vlbl = $('set-volume-val');
+      if (vlbl) vlbl.textContent = v + '%';
     };
   }
   // 摸鱼小窗入口显隐由 <head> 预渲染脚本 + CSS(.slack-only) 在首屏前定稿，避免加载后闪烁；此处仅绑定事件

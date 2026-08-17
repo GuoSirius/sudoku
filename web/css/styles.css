@@ -1250,6 +1250,47 @@ body.mini .game-actions .btn {
   font-size: 13px;
   padding: 8px 0;
 }
+/* 摸鱼小窗导航条：替代被隐藏的 appbar，支持在小窗内自由跳页 */
+.mini-only { display: none; }
+body.mini .mini-nav {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  justify-content: space-around;
+}
+.mini-nav .mn-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.mini-nav .mn-btn span { font-size: 10px; line-height: 1; }
+.mini-nav .mn-btn:hover,
+.mini-nav .mn-btn:focus-visible { background: var(--border); }
+/* 设置页音量滑块 */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.setting-row .setting-label { margin: 0; min-width: 34px; }
+.setting-row input[type="range"] { flex: 1; accent-color: var(--primary); }
+.setting-val {
+  min-width: 40px;
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ============ 老板键：一键伪装成「在写代码」 ============ */
 #boss-screen {

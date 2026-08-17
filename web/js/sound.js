@@ -4,6 +4,7 @@
 // 任何情况下都不会阻塞或影响游戏主流程。
 
 const KEY = 'sudoku:sound';
+const VOL_KEY = 'sudoku:soundVolume';
 
 function loadEnabled() {
   try {
@@ -21,7 +22,26 @@ function saveEnabled() {
   } catch (e) {}
 }
 
+function loadVolume() {
+  try {
+    const v = localStorage.getItem(VOL_KEY);
+    if (v === null) return 0.7; // 默认 70%
+    const n = parseFloat(v);
+    if (isNaN(n)) return 0.7;
+    return Math.min(1, Math.max(0, n));
+  } catch (e) {
+    return 0.7;
+  }
+}
+
+function saveVolume() {
+  try {
+    localStorage.setItem(VOL_KEY, String(volume));
+  } catch (e) {}
+}
+
 let enabled = loadEnabled();
+let volume = loadVolume();
 let ctx = null;
 
 export function isSoundOn() {
@@ -31,6 +51,18 @@ export function isSoundOn() {
 export function setSoundOn(on) {
   enabled = !!on;
   saveEnabled();
+}
+
+// 音量：0~1 之间的数；设置后即时影响后续所有音效
+export function getVolume() {
+  return volume;
+}
+
+export function setVolume(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return;
+  volume = Math.min(1, Math.max(0, n));
+  saveVolume();
 }
 
 // 惰性创建 AudioContext；浏览器要求其在用户手势内创建/恢复，而调用方（落子/擦除等）
@@ -50,11 +82,12 @@ function getCtx() {
   }
 }
 
-// 播放一个带包络的短音
+// 播放一个带包络的短音（gainPeak 会乘以全局音量）
 function blip(type, freq, dur, gainPeak, when = 0, slideTo = null) {
   const ac = getCtx();
   if (!ac) return;
   try {
+    const peak = Math.max(0.0001, gainPeak * volume);
     const t0 = ac.currentTime + when;
     const osc = ac.createOscillator();
     const g = ac.createGain();
@@ -62,7 +95,7 @@ function blip(type, freq, dur, gainPeak, when = 0, slideTo = null) {
     osc.frequency.setValueAtTime(freq, t0);
     if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(gainPeak, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(g).connect(ac.destination);
     osc.start(t0);
@@ -94,4 +127,17 @@ export function playWin() {
   if (!enabled) return;
   const notes = [523.25, 659.25, 783.99, 1046.5];
   notes.forEach((f, i) => blip('triangle', f, 0.18, 0.2, i * 0.12));
+}
+
+// 提示：轻柔上扬双音（E5→A5），给人“帮你想到了”的轻微正反馈
+export function playHint() {
+  if (!enabled) return;
+  blip('sine', 659.25, 0.11, 0.07);
+  blip('sine', 880.0, 0.13, 0.07, 0.09);
+}
+
+// 检查：单音轻提示（G5 柔和长音），像“核对完成”的清脆一声
+export function playCheck() {
+  if (!enabled) return;
+  blip('sine', 783.99, 0.16, 0.08);
 }

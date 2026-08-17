@@ -487,5 +487,25 @@ cancelMiniBtn.click();
 assert(windowOpenCalls === 1, '点「取消」不打开独立窗口（调用次数仍为 1）');
 assert(!elements['modal-root'].classList.contains('show'), '取消后弹窗关闭');
 
+// 摸鱼小窗导航条：init 应为各页按钮绑定跳转（解决小窗内无法跳页的问题）
+['game', 'home', 'history', 'leaderboard', 'settings', 'guide'].forEach((p) => {
+  const b = elements['mn-' + p];
+  assert(b && typeof b.onclick === 'function', `迷你导航「${p}」按钮已绑定跳转`);
+});
+// 跳转到设置页：应切换到设置屏（非 game），且其余屏隐藏
+elements['mn-settings'].click();
+assert(
+  !elements['screen-settings'].classList.contains('hidden') &&
+    elements['screen-history'].classList.contains('hidden'),
+  '迷你导航跳设置页：切换到设置屏且离开历史屏'
+);
+// 跳回历史页
+elements['mn-history'].click();
+assert(
+  !elements['screen-history'].classList.contains('hidden') &&
+    elements['screen-settings'].classList.contains('hidden'),
+  '迷你导航跳历史页：回到历史屏'
+);
+
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

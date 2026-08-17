@@ -65,6 +65,16 @@
         </button>
       </header>
 
+      <!-- 摸鱼小窗导航条：仅 mini 模式（?mini=1 / 小窗）显示，替代被隐藏的 appbar，支持自由跳页 -->
+      <nav class="mini-nav mini-only" id="mini-nav" aria-label="页面导航">
+        <button class="mn-btn" id="mn-game" title="对局" aria-label="对局">🎮<span>对局</span></button>
+        <button class="mn-btn" id="mn-home" title="首页" aria-label="首页">🏠<span>首页</span></button>
+        <button class="mn-btn" id="mn-history" title="历史" aria-label="历史">📜<span>历史</span></button>
+        <button class="mn-btn" id="mn-leaderboard" title="排行" aria-label="排行">🏆<span>排行</span></button>
+        <button class="mn-btn" id="mn-settings" title="设置" aria-label="设置">⚙️<span>设置</span></button>
+        <button class="mn-btn" id="mn-guide" title="指南" aria-label="指南">📖<span>指南</span></button>
+      </nav>
+
       <main id="main">
         <!-- 首页 -->
         <section class="screen" id="screen-menu">
@@ -187,7 +197,12 @@
             <div class="setting-group">
               <label class="setting-label">音效</label>
               <div class="seg" id="set-sound"></div>
-              <p class="setting-hint">落子、擦除、填错与通关的提示音；关闭后全程静音。游戏内右上角可快捷开关。</p>
+              <div class="setting-row">
+                <label class="setting-label" for="set-volume">音量</label>
+                <input type="range" id="set-volume" min="0" max="100" step="5" />
+                <span class="setting-val" id="set-volume-val">70%</span>
+              </div>
+              <p class="setting-hint">落子、擦除、填错、提示、检查与通关的提示音；关闭后全程静音，音量可单独调节。游戏内右上角可快捷开关。</p>
             </div>
             <div class="setting-group slack-only">
               <label class="setting-label">摸鱼伪装（老板键 `）</label>
