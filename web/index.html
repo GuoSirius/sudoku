@@ -100,14 +100,16 @@
         <section class="screen hidden" id="screen-game">
           <div class="game-top">
             <span class="badge" id="game-difficulty">进阶</span>
+            <div class="game-top-actions">
+              <button class="icon-btn" id="btn-theme" title="切换明暗主题" aria-label="切换主题">🌓</button>
+              <button class="icon-btn" id="btn-pause" title="暂停" aria-label="暂停">⏸</button>
+              <button class="icon-btn" id="btn-sound" title="音效：开（点击关闭）" aria-label="关闭音效">🔊</button>
+            </div>
             <div class="game-stats">
               <span class="stat"><span class="stat-label">时间</span><b id="game-timer">00:00</b></span>
               <span class="stat"><span class="stat-label">错误</span><b id="game-mistakes">0</b></span>
               <span class="stat"><span class="stat-label">剩余</span><b id="game-remaining">81</b></span>
             </div>
-            <button class="icon-btn" id="btn-theme" title="切换明暗主题" aria-label="切换主题">🌓</button>
-            <button class="icon-btn" id="btn-pause" title="暂停" aria-label="暂停">⏸</button>
-            <button class="icon-btn" id="btn-sound" title="音效：开（点击关闭）" aria-label="关闭音效">🔊</button>
           </div>
           <div class="pause-overlay hidden" id="pause-overlay">
             <span class="pause-title">⏸ 已暂停 · 进度已保存</span>

@@ -264,8 +264,15 @@ body {
 .game-top {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
+}
+.game-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto; /* 推到首行最右，与难度徽标(左侧)分列两端 */
 }
 .badge {
   background: var(--primary-weak);
@@ -278,7 +285,7 @@ body {
 .game-stats {
   display: flex;
   gap: 14px;
-  flex: 1;
+  flex-basis: 100%; /* 独占一整行，绝不被右侧图标挤压 */
   justify-content: center;
 }
 .stat {
