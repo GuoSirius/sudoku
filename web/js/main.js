@@ -278,11 +278,11 @@ function restoreScreen() {
 }
 
 // ---------------- 弹窗 / Toast ----------------
-function showModal({ title, body, actions = [], dismissable = true, actionsClass = '', onClose = null }) {
+function showModal({ title, body, actions = [], dismissable = true, actionsClass = '', className = '', onClose = null }) {
   const root = $('modal-root');
   root.innerHTML = '';
   const m = document.createElement('div');
-  m.className = 'modal';
+  m.className = 'modal' + (className ? ' ' + className : '');
   // 头部：标题 + 右上角关闭按钮（所有弹框统一由按钮或叉叉关闭，不再点遮罩关闭）
   const head = document.createElement('div');
   head.className = 'modal-head';
@@ -736,6 +736,7 @@ function showWinModal(rec) {
     title: isNewBest(rec) ? '🎉 新纪录！' : '恭喜完成',
     body,
     actionsClass: 'win-actions',
+    className: 'win-pop',
     // 点右上角 × 关闭时，默认跳转到排行榜
     onClose: () => { closeModal(); showScreen('leaderboard'); },
     actions: [
@@ -744,6 +745,83 @@ function showWinModal(rec) {
       { label: '查看排行榜', ghost: true, onClick: () => { closeModal(); showScreen('leaderboard'); } },
     ],
   });
+  launchConfetti(); // 胜利礼花（失败静默，不影响主流程）
+}
+
+// 胜利礼花：全屏 canvas 自实现，零外部依赖、可离线运行
+// 守卫：无 requestAnimationFrame / canvas 2d 上下文 / document.body 时直接跳过（测试环境零副作用）
+function launchConfetti() {
+  try {
+    if (typeof requestAnimationFrame !== 'function') return;
+    if (!document.body) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext && canvas.getContext('2d');
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = window.innerWidth || document.documentElement.clientWidth || 800;
+    const H = window.innerHeight || document.documentElement.clientHeight || 600;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+    canvas.className = 'confetti-canvas';
+    document.body.appendChild(canvas);
+    const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#facc15'];
+    const N = Math.min(200, Math.max(80, Math.round(W / 6)));
+    const ps = [];
+    for (let i = 0; i < N; i++) {
+      const fromTop = Math.random() < 0.65;
+      ps.push({
+        x: fromTop ? Math.random() * W : (Math.random() < 0.5 ? -10 : W + 10),
+        y: fromTop ? -20 - Math.random() * H * 0.3 : H + 20,
+        vx: (Math.random() - 0.5) * 5,
+        vy: fromTop ? 2 + Math.random() * 3 : -(4 + Math.random() * 5),
+        size: 6 + Math.random() * 9,
+        color: colors[(Math.random() * colors.length) | 0],
+        rot: Math.random() * Math.PI,
+        vrot: (Math.random() - 0.5) * 0.3,
+        shape: Math.random() < 0.5 ? 'rect' : 'circle',
+        life: 0,
+        ttl: 200 + Math.random() * 90,
+      });
+    }
+    const DURATION = 3000;
+    const start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    function frame(now) {
+      const t = (typeof performance !== 'undefined' && performance.now) ? now : Date.now();
+      const elapsed = t - start;
+      ctx.clearRect(0, 0, W, H);
+      let alive = 0;
+      const fade = Math.max(0, 1 - Math.max(0, elapsed - (DURATION - 800)) / 800);
+      for (const p of ps) {
+        p.vy += 0.09; // 重力
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+        p.life++;
+        if (p.life < p.ttl && p.y < H + 40 && p.y > -40 && fade > 0) alive++;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        if (p.shape === 'rect') ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      if (elapsed < DURATION && alive > 0) requestAnimationFrame(frame);
+      else if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+    }
+    requestAnimationFrame(frame);
+  } catch (e) {
+    // 礼花是锦上添花，任何异常都不应影响通关主流程
+  }
 }
 
 // 从复盘走子序列重建当前盘面与笔记（用于「继续」未完成对局）
