@@ -1233,7 +1233,7 @@ body.mini .game-top .badge {
 body.mini .game-top .game-stats {
   display: none;
 }
-body.mini .game-top #btn-pause {
+body.mini .game-top-actions .icon-btn {
   width: 32px;
   height: 32px;
   border-radius: 8px;
