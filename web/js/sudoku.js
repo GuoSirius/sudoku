@@ -5,19 +5,25 @@ export const SIZE = 9;
 
 // 难度由「双轴」共同决定，保证逐级均匀、体感明显：
 //   · 空格轴 clues（主轴）：给定数区间 [cluesMin, cluesMax]。clues 越小空格越多、越难；
-//     用 clues 主轴把入门→极限单调铺开（每档约递减 5），是档间梯度的主要来源，也保留存（入门看着就空得少）。
+//     用 clues 主轴把入门→极限单调铺开（每档约递减 5~7），是档间梯度的主要来源，也保留存（入门看着就空得少）。
+//     为拉开体感，前 3 档（入门/简单/进阶）构成「轻松营」clues 偏满，后 3 档（困难/专家/极限）构成「硬核营」
+//     clues 明显更稀，且进阶→困难之间留大空档，使两段一眼可分（详见下方 DIFFICULTIES 注释）。
 //   · 技巧轴 grade：本局实际最难逻辑技巧层级（对应 grader.js 技巧阶梯），由盘面自然浮动、不写死、不封顶；
-//     自然随机盘评级集中在 0~4 与 9，进阶技巧（区块/X-Wing/XY-Wing）主要靠「稀疏奖励」偶发触达。
+//     自然随机盘评级集中在 0~4 与 9，进阶技巧（区块/X-Wing/XY-Wing）靠更稀的 clues 自然触达。
 //   · 各档 level 字段仅作分流：level 0 → digCap 保留多提示（入门恒最简单、技巧组合 [0]）；
 //     level 9 → maximalDig 挖到最稀疏并优先取 XY-Wing(g9) 盘（极限硬核）；中间档忽略 level，只挖到目标 clues。
 // hints 用于难度选择弹窗，描述这一档常见练法（因每局实际技巧随盘面浮动，措辞为「常见组合」而非固定）。
+// 难度分「前两档轻松营 + 后三档硬核营」两大段，段间留明显空档、段内每档 clues 不重叠：
+//   轻松营（入门/简单/进阶）：clues 偏满、几乎靠唯一余数/候选即可收尾，体感轻松；
+//   硬核营（困难/专家/极限）：clues 明显更稀、需 X-Wing 等进阶技巧，且三档逐级更空更硬。
+// 段间（进阶→困难）刻意拉大空档，使「轻松营」与「硬核营」一眼可分。
 export const DIFFICULTIES = [
   { id: 'beginner', label: '入门', level: 0, cluesMin: 46, cluesMax: 54, hint: '仅唯一余数，最适合新手建立信心' },
   { id: 'easy', label: '简单', level: 1, cluesMin: 41, cluesMax: 46, hint: '唯一余数与候选，轻松上手' },
-  { id: 'medium', label: '中等', level: 2, cluesMin: 33, cluesMax: 37, hint: '每局技巧组合不同，含数对 / 区块 / 区块摒除，常有变化' },
-  { id: 'hard', label: '困难', level: 3, cluesMin: 28, cluesMax: 32, hint: '每局不同，常出现 X-Wing / XY-Wing 进阶' },
-  { id: 'expert', label: '专家', level: 4, cluesMin: 24, cluesMax: 27, hint: '区块摒除 / 三数 / X-Wing，硬核进阶' },
-  { id: 'master', label: '极限', level: 9, cluesMin: 20, cluesMax: 26, hint: 'XY-Wing 级进阶逻辑，硬核烧脑' },
+  { id: 'medium', label: '进阶', level: 2, cluesMin: 35, cluesMax: 39, hint: '含数对 / 区块 / 区块摒除，每局组合有变化' },
+  { id: 'hard', label: '困难', level: 3, cluesMin: 28, cluesMax: 33, hint: '常需 X-Wing / XY-Wing 等进阶技巧，颇费思量' },
+  { id: 'expert', label: '专家', level: 4, cluesMin: 23, cluesMax: 27, hint: '区块摒除 / 三数 / X-Wing 硬核，逻辑链更长' },
+  { id: 'master', label: '极限', level: 9, cluesMin: 18, cluesMax: 22, hint: '必须用到 XY-Wing，最硬核烧脑' },
 ];
 export const DIFFICULTY_BY_ID = Object.fromEntries(DIFFICULTIES.map((d) => [d.id, d]));
 
@@ -102,11 +108,11 @@ export function hasUniqueSolution(grid) {
 
 // 根据难度生成谜题：难度由「空格数区间 clues」定义（保证梯度、保留存），
 // 而「本局实际用到的最难技巧 grade」随盘面自然浮动、不写死——
-// 同一档每局锻炼的技巧组合都不同，中等/困难偶发更稀疏可触达 X-Wing / XY-Wing。
+// 同一档每局锻炼的技巧组合都不同；困难/专家借更稀的 clues 自然触达 X-Wing / XY-Wing。
 //   · 入门(level 0)：digCap(0) 保留较多提示、明显最简单。
 //   · 极限(level 9)：maximalDig 挖到最稀疏且唯一解，优先选需 XY-Wing(grade 9) 的盘。
-//   · 中间档：挖到目标 clues 区间（gate 用 logicSolve(.,MAX_LEVEL) 保证唯一解），
-//     中等/困难加 18% 稀疏奖励。
+//   · 中间档（简单/进阶/困难/专家）：挖到目标 clues 区间（gate 用 logicSolve(.,MAX_LEVEL) 保证唯一解），
+//     各档区间互不重叠、且「进阶→困难」之间留大空档，使轻松营与硬核营体感明显分开。
 // 返回 { puzzle, solution, grade, clues }。
 import { logicSolve, grade, MAX_LEVEL } from './grader.js';
 
@@ -168,16 +174,10 @@ export function makePuzzle(difficulty = 'medium') {
     }
     return best;
   }
-  // 中间档(简单/中等/困难/专家)：挖空目标改为「挖到目标 clues 区间」，gate 用 logicSolve(.,MAX_LEVEL)
+  // 中间档（简单/进阶/困难/专家）：挖空目标改为「挖到目标 clues 区间」，gate 用 logicSolve(.,MAX_LEVEL)
   // 保证唯一解；grade 由实际求解决定、不封顶——同一档每局技巧组合自然不同。
-  // 中等/困难 加 18%「稀疏奖励」：偶发挖到 26 提示数(≈55 空)，可触达 区块摒除 / X-Wing / XY-Wing 等进阶技巧，
-  // 从而「中等甚至能用 X/XY」、每局解法组合不写死。
+  // 各档区间互不重叠，困难/专家靠更稀的 clues 自然触达进阶技巧，无需额外稀疏奖励（避免越界到相邻档）。
   let target = cluesMin + Math.floor(Math.random() * (cluesMax - cluesMin + 1));
-  // 困难档保留 18%「稀疏奖励」：偶发降到 26 提示数，可触达 X-Wing / XY-Wing 等进阶技巧，增添变化；
-  // 中等档不再享受该奖励，保证稳定落在 33~37 区间、与「中等」标签一致。
-  if (difficulty === 'hard' && Math.random() < 0.18) {
-    target = 26;
-  }
   return digToTarget(target);
 }
 

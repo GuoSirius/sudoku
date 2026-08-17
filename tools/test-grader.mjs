@@ -117,8 +117,9 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
       const bf = bruteForce(puzzle);
       const match = bf && bf.join('') === solution.join('');
       const solvable = g <= MAX_LEVEL; // 纯逻辑可解（有思路，不靠猜）
-      // 下限：稀疏奖励可能把目标降到 29(中等)/26(困难)，故用各自下界；上限不严格约束（挖空可能提前停）
-      const floor = d.id === 'medium' || d.id === 'hard' ? 26 : d.cluesMin;
+      // 下限：各档 clues 区间互不重叠且 digToTarget 只会在 [cluesMin,cluesMax] 内挖空（不会低于下界）；
+      // 极限走 maximalDig，实际 clues 远高于其展示下界。故统一以 cluesMin 为下限校验。
+      const floor = d.cluesMin;
       const inWindow = d.level === 0 || (clues >= floor && clues <= 81);
       if (!(uniq && match && solvable && inWindow)) okAll = false;
       if (!inWindow) windowOk = false;
@@ -148,11 +149,11 @@ import { makePuzzle, DIFFICULTIES } from '../web/js/sudoku.js';
     '  · 各档出现的不同 grade 数(验证每局体验有变化):',
     DIFFICULTIES.map((d) => `${d.label}=${gradesSeen[d.id]}`).join('  ')
   );
-  assert(avgClues.easy > avgClues.medium, '简单应比中等更满(空格更少)');
-  assert(avgClues.medium > avgClues.hard, '中等应比困难更满');
+  assert(avgClues.easy > avgClues.medium, '简单应比进阶更满(空格更少)');
+  assert(avgClues.medium > avgClues.hard, '进阶应比困难更满');
   assert(avgClues.hard > avgClues.expert, '困难应比专家更满');
   assert(maxGrade.master >= 9, `极限档应出现需「XY-Wing」的盘（观测 ${maxGrade.master}）`);
-  assert(gradesSeen.medium >= 2, `中等档不同 grade 应≥2（同档难度体验有变化，观测 ${gradesSeen.medium}）`);
+  assert(gradesSeen.medium >= 2, `进阶档不同 grade 应≥2（同档难度体验有变化，观测 ${gradesSeen.medium}）`);
   assert(gradesSeen.hard >= 2, `困难档不同 grade 应≥2（同档难度体验有变化，观测 ${gradesSeen.hard}）`);
 }
 

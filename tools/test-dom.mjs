@@ -284,7 +284,7 @@ localStorage.removeItem('sudoku:current');
 
 // 笔记模式
 elements['btn-new'].click();
-findAll(elements['modal-root'], 'seg-btn').find((b) => b.textContent.startsWith('中等')).click();
+findAll(elements['modal-root'], 'seg-btn').find((b) => b.textContent.startsWith('进阶')).click();
 g = cur();
 const e0 = g.puzzle.findIndex((v) => v === 0);
 elements['board'].children[e0].click();
