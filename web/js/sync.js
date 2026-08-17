@@ -131,6 +131,8 @@ async function pullAndMerge() {
   storage.setSettings(merged.settings);
   storage.setHistory(merged.history);
   storage.setLeaderboard(merged.leaderboard);
+  // 通知各模块用最新 settings 刷新本地偏好（音效开关/音量随之跨设备生效）
+  try { window.dispatchEvent(new Event('sudoku:settings-synced')); } catch (e) {}
   // 合并结果回写云端，保证多端最终一致
   schedulePush();
   notify('已同步云端数据');

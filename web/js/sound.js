@@ -3,46 +3,46 @@
 // 所有导出函数均做了环境守卫（无 AudioContext / 未启用 / 测试环境）与异常吞掉，
 // 任何情况下都不会阻塞或影响游戏主流程。
 
-const KEY = 'sudoku:sound';
-const VOL_KEY = 'sudoku:soundVolume';
+import { storage } from './storage.js';
 
-function loadEnabled() {
-  try {
-    const v = localStorage.getItem(KEY);
-    if (v === null) return true; // 默认开启
-    return v !== '0' && v !== 'false';
-  } catch (e) {
-    return true;
-  }
-}
+const DEFAULT_VOLUME = 0.6; // 默认音量 60%
+const DEFAULT_ON = true;
 
-function saveEnabled() {
-  try {
-    localStorage.setItem(KEY, enabled ? '1' : '0');
-  } catch (e) {}
-}
-
-function loadVolume() {
-  try {
-    const v = localStorage.getItem(VOL_KEY);
-    if (v === null) return 0.7; // 默认 70%
-    const n = parseFloat(v);
-    if (isNaN(n)) return 0.7;
-    return Math.min(1, Math.max(0, n));
-  } catch (e) {
-    return 0.7;
-  }
-}
-
-function saveVolume() {
-  try {
-    localStorage.setItem(VOL_KEY, String(volume));
-  } catch (e) {}
-}
-
-let enabled = loadEnabled();
-let volume = loadVolume();
+// 内存缓存（无 localStorage 环境下仍可用，保证偏好不丢失）
+let enabled = DEFAULT_ON;
+let volume = DEFAULT_VOLUME;
 let ctx = null;
+
+// 以 settings 为唯一真源：读取失败则用默认值，绝不抛错
+function readPrefs() {
+  let s = {};
+  try {
+    s = storage.getSettings() || {};
+  } catch (e) {
+    s = {};
+  }
+  if (typeof s.sound === 'boolean') enabled = s.sound;
+  else enabled = DEFAULT_ON;
+  if (typeof s.volume === 'number' && !isNaN(s.volume)) {
+    volume = Math.min(1, Math.max(0, s.volume));
+  } else {
+    volume = DEFAULT_VOLUME;
+  }
+}
+
+readPrefs();
+
+// 把当前偏好写回 settings（随账号「同步」跨设备）
+function persist() {
+  try {
+    storage.setSettings({ sound: enabled, volume });
+  } catch (e) {}
+}
+
+// 云端「同步」拉取完成后由 main.js 调用：用最新 settings 覆盖内存偏好
+export function reloadFromSettings() {
+  readPrefs();
+}
 
 export function isSoundOn() {
   return enabled;
@@ -50,7 +50,7 @@ export function isSoundOn() {
 
 export function setSoundOn(on) {
   enabled = !!on;
-  saveEnabled();
+  persist();
 }
 
 // 音量：0~1 之间的数；设置后即时影响后续所有音效
@@ -62,7 +62,7 @@ export function setVolume(v) {
   const n = parseFloat(v);
   if (isNaN(n)) return;
   volume = Math.min(1, Math.max(0, n));
-  saveVolume();
+  persist();
 }
 
 // 惰性创建 AudioContext；浏览器要求其在用户手势内创建/恢复，而调用方（落子/擦除等）

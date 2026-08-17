@@ -7,7 +7,7 @@ import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
-import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume } from './sound.js';
+import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume, reloadFromSettings } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
@@ -1804,6 +1804,11 @@ function init() {
 
   registerPWA();
   initSync(); // 异步：非浏览器/离线时自动降级为纯本地，不阻塞游戏
+  // 音效偏好以 settings 为唯一真源：启动时刷新一次，并监听云端「同步」拉取完成
+  reloadFromSettings();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('sudoku:settings-synced', reloadFromSettings);
+  }
   restoreScreen();
   // 摸鱼迷你模式：?mini=1 时强制暗色、只留棋盘+数字盘，并自动进入对局
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
