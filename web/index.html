@@ -97,6 +97,7 @@
             </div>
             <button class="icon-btn" id="btn-theme" title="切换明暗主题" aria-label="切换主题">🌓</button>
             <button class="icon-btn" id="btn-pause" title="暂停" aria-label="暂停">⏸</button>
+            <button class="icon-btn" id="btn-sound" title="音效：开（点击关闭）" aria-label="关闭音效">🔊</button>
           </div>
           <div class="pause-overlay hidden" id="pause-overlay">
             <span class="pause-title">⏸ 已暂停 · 进度已保存</span>
@@ -182,6 +183,11 @@
               <label class="setting-label">错误提示</label>
               <div class="seg" id="set-mistake"></div>
               <p class="setting-hint">关闭：不自动标红；仅冲突：只标重复数字（不泄题）；全量核对：逐格比对答案并即时计错。</p>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">音效</label>
+              <div class="seg" id="set-sound"></div>
+              <p class="setting-hint">落子、擦除、填错与通关的提示音；关闭后全程静音。游戏内右上角可快捷开关。</p>
             </div>
             <div class="setting-group slack-only">
               <label class="setting-label">摸鱼伪装（老板键 `）</label>

@@ -7,6 +7,7 @@ import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
+import { playPlace, playErase, playWrong, playWin, isSoundOn, setSoundOn } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
@@ -437,14 +438,14 @@ function renderPad() {
       // 双击：同一数字在窗口内再次点击 -> 选中并填入（先还原刚才的候选切换）
       if (lastPad && lastPad.n === n && now - lastPad.t < DOUBLE_CLICK_MS) {
         game.setCell(game.selected, n, true); // 还原候选（撤销单击切换）
-        if (game.setCell(game.selected, n, false)) afterMove(); // 填入正式值
+        if (game.setCell(game.selected, n, false)) { afterMove(); feedbackPlace(game.selected, n); } // 填入正式值
         lastPad = null;
         return;
       }
       setLastPad(n);
       // 单击：wantNote = 笔记模式 || 按住 Ctrl -> 记候选(切换：有删无加)；否则回填
       const wantNote = noteMode || (e && e.ctrlKey) || ctrlHeld;
-      if (game.setCell(game.selected, n, wantNote)) afterMove();
+      if (game.setCell(game.selected, n, wantNote)) { afterMove(); if (!wantNote) feedbackPlace(game.selected, n); }
     });
     wrap.appendChild(b);
   }
@@ -457,7 +458,7 @@ function onCellClick(i) {
     lastNote = null;
     game.selected = i;
     game.setCell(i, n, true); // 还原候选（撤销第一次单击的切换）
-    if (game.setCell(i, n, false)) afterMove(); // 填入正式值
+    if (game.setCell(i, n, false)) { afterMove(); feedbackPlace(i, n); } // 填入正式值
     return;
   }
   game.selected = i;
@@ -475,7 +476,7 @@ function onNoteClick(i, n) {
     const fillN = lastNote.n;
     lastNote = null;
     game.setCell(i, fillN, true); // 还原候选（撤销第一次单击的切换）
-    if (game.setCell(i, fillN, false)) afterMove(); // 填入正式值
+    if (game.setCell(i, fillN, false)) { afterMove(); feedbackPlace(i, fillN); } // 填入正式值
     return;
   }
   setLastNote(i, n);
@@ -488,18 +489,19 @@ function inputNumber(n, forceNote = false) {
     return;
   }
   // 键盘：默认填入；笔记模式或按住 Ctrl 时记候选（与数字盘单击一致）
-  if (game.setCell(game.selected, n, noteMode || forceNote)) afterMove();
+  const asNote = noteMode || forceNote;
+  if (game.setCell(game.selected, n, asNote)) { afterMove(); if (!asNote) feedbackPlace(game.selected, n); }
 }
 function eraseSelected() {
   if (!game || game.selected == null) return;
-  if (game.eraseCell(game.selected)) afterMove();
+  if (game.eraseCell(game.selected)) { afterMove(); feedbackPlace(game.selected, 0); }
 }
 function useHint() {
   if (!game || game.selected == null) {
     toast('请先选择一个空格');
     return;
   }
-  if (game.hint(game.selected)) afterMove();
+  if (game.hint(game.selected)) { afterMove(); feedbackPlace(game.selected, game.solution[game.selected]); }
   else toast('该格无需提示');
 }
 // 手动「检查」：按需揭示错误并计错（游戏中零自动泄题，想核对时再核对）
@@ -528,6 +530,34 @@ function afterMove() {
   renderGame();
   saveCurrent();
   if (game.status === 'won') onWin();
+}
+
+// 落子/擦除后的音效反馈：根据结果播放 落子 / 填错 / 擦除
+function feedbackPlace(idx, val) {
+  if (val === 0) {
+    playErase();
+    return;
+  }
+  if (game.isWrong(idx)) playWrong();
+  else playPlace();
+}
+
+// 音效开关：同时同步「设置页开关」与「游戏内静音按钮」两处 UI
+function updateSoundBtn() {
+  const b = $('btn-sound');
+  if (!b) return;
+  b.textContent = isSoundOn() ? '🔊' : '🔇';
+  b.title = isSoundOn() ? '音效：开（点击关闭）' : '音效：关（点击开启）';
+  if (typeof b.setAttribute === 'function') {
+    b.setAttribute('aria-label', isSoundOn() ? '关闭音效' : '开启音效');
+  }
+}
+function setSoundState(on) {
+  setSoundOn(on);
+  updateSoundBtn();
+  try {
+    renderSettings();
+  } catch (e) {}
 }
 
 function startNewGame(diff) {
@@ -746,6 +776,7 @@ function showWinModal(rec) {
     ],
   });
   launchConfetti(); // 胜利礼花（失败静默，不影响主流程）
+  playWin(); // 通关庆祝音效
 }
 
 // 胜利礼花：全屏 canvas 自实现，零外部依赖、可离线运行
@@ -1439,6 +1470,24 @@ function renderSettings() {
         mwrap.appendChild(b);
     });
   }
+  // 音效：开启 / 关闭（偏好持久化，与游戏内静音按钮同步）
+  const swrap = $('set-sound');
+  if (swrap) {
+    swrap.innerHTML = '';
+    [
+      ['1', '开启'],
+      ['0', '关闭'],
+    ].forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.className = 'seg-btn' + (v === (isSoundOn() ? '1' : '0') ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        setSoundState(v === '1');
+        toast('音效：' + label);
+      };
+      swrap.appendChild(b);
+    });
+  }
   // 摸鱼伪装语言：前端 / PHP / Java / Python（入口整组由 CSS .slack-only 控制，仅桌面端构建可选项）
   const bwrap = $('set-bosslang');
   if (bwrap && SLACK_ENABLED) {
@@ -1573,6 +1622,8 @@ function init() {
     storage.setSettings({ theme: next });
     applyTheme(next);
   };
+  $('btn-sound').onclick = () => setSoundState(!isSoundOn());
+  updateSoundBtn();
   $('btn-notes').onclick = toggleNotes;
   $('btn-erase').onclick = eraseSelected;
   $('btn-hint').onclick = useHint;
