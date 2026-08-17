@@ -7,7 +7,7 @@ import { buildBoard } from './ui.js';
 import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
-import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume, reloadFromSettings } from './sound.js';
+import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume, reloadFromSettings, warmUpAudio } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
@@ -1608,6 +1608,7 @@ function init() {
     if (storage.getSettings().theme === 'auto') applyTheme('auto');
   });
   window.addEventListener('resize', syncMiniNavOffset);
+  warmUpAudio(); // 首个手势即唤醒 AudioContext，避免“第一下没声 / 时有时无”
 
   $('btn-home').onclick = () => {
     // 游戏中返回首页：先暂停（停止计时、保留进度），避免计时偷偷继续
