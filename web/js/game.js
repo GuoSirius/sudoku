@@ -149,9 +149,35 @@ export class Game {
     // 注意：错误计数不再在落子时自动累加（会泄题）。
     // 计数由上层按 mistakeMode 决定：full 模式即时计入；其余靠「检查」按钮按需计入。
     this.notes[idx] = []; // 填入数字后清空该格笔记
+    if (val !== 0) this.clearPeerNotes(idx, val); // 并移除同行/列/宫中其他格的相同候选
     this.moves.push({ idx, val, kind: val === 0 ? 'erase' : 'set', t: this.currentElapsed() });
     this.checkWin();
     return true;
+  }
+
+  // 在某格填入确定数字 val 后，移除其同行/列/宫中其他格的相同候选（铅笔标记）
+  clearPeerNotes(idx, val) {
+    if (val === 0) return;
+    const r = Math.floor(idx / 9);
+    const c = idx % 9;
+    const br = Math.floor(r / 3) * 3;
+    const bc = Math.floor(c / 3) * 3;
+    const peers = new Set();
+    for (let i = 0; i < 9; i++) {
+      peers.add(r * 9 + i); // 行
+      peers.add(i * 9 + c); // 列
+    }
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 3; dc++) {
+        peers.add((br + dr) * 9 + (bc + dc)); // 宫
+      }
+    }
+    peers.delete(idx);
+    for (const p of peers) {
+      const arr = this.notes[p];
+      const k = arr.indexOf(val);
+      if (k >= 0) arr.splice(k, 1);
+    }
   }
 
   eraseCell(idx) {
@@ -170,6 +196,7 @@ export class Game {
     }
     this.cells[idx] = this.solution[idx];
     this.notes[idx] = [];
+    this.clearPeerNotes(idx, this.solution[idx]);
     this.hintsUsed++;
     this.moves.push({ idx, val: this.solution[idx], kind: 'hint', t: this.currentElapsed() });
     this.checkWin();

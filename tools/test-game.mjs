@@ -73,5 +73,33 @@ const assert = (c, m) => (c ? pass++ : (fail++, console.error('  ✗', m)));
   assert(g.currentWrongCount() === 9, '修正 3 格后错误总数应降为 9');
 }
 
+// 6) 落子后自动清除同行/列/宫中其他格的相同候选
+{
+  const g = Game.newGame('easy');
+  const idx = g.cells.findIndex((v) => v === 0); // 一个空格
+  const v = 7; // 待填数字
+  const r = Math.floor(idx / 9);
+  const c = idx % 9;
+  const br = Math.floor(r / 3) * 3;
+  const bc = Math.floor(c / 3) * 3;
+  const peers = new Set();
+  for (let i = 0; i < 9; i++) { peers.add(r * 9 + i); peers.add(i * 9 + c); }
+  for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) peers.add((br + dr) * 9 + (bc + dc));
+  peers.delete(idx);
+  // 给本格、所有空格 peer 以及一个非 peer 空格都写上候选 v
+  g.setCell(idx, v, true);
+  for (const p of peers) if (g.cells[p] === 0) g.setCell(p, v, true);
+  const np = g.cells.findIndex((val, i) => val === 0 && !peers.has(i) && i !== idx);
+  if (np >= 0) g.setCell(np, v, true);
+  // 落子
+  const ok = g.setCell(idx, v, false);
+  assert(ok, '应在空格落子成功');
+  assert(g.notes[idx].length === 0, '落子后本格笔记应清空');
+  let peerCleared = true;
+  for (const p of peers) if (g.cells[p] === 0 && g.notes[p].includes(v)) peerCleared = false;
+  assert(peerCleared, `同行/列/宫其他空格的候选 ${v} 应被自动清除`);
+  if (np >= 0) assert(g.notes[np].includes(v), '非同行列宫的空格候选应保留');
+}
+
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);
 if (fail > 0) process.exit(1);
