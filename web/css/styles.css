@@ -1235,10 +1235,15 @@ body.mini .game-top #btn-pause {
   font-size: 14px;
 }
 body.mini #main {
-  padding-top: 46px; /* 为固定置顶的迷你导航让出空间 */
+  /* 按迷你导航实测高度(+留白)下移内容区，避免固定导航条覆盖内容；--mini-nav-h 由 JS 写入 */
+  padding-top: calc(var(--mini-nav-h, 56px) + 16px);
 }
 body.mini .pad-hint {
   display: none;
+}
+/* 首页在迷你模式下，#main 已按导航高度下移，故收掉菜单自身的大段顶部留白，避免顶部过空 */
+body.mini .menu {
+  padding-top: 4px;
 }
 body.mini .board-wrap {
   margin: 6px 0;

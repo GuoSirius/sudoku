@@ -506,6 +506,13 @@ assert(
     elements['screen-settings'].classList.contains('hidden'),
   '迷你导航跳历史页：回到历史屏'
 );
+// 跳回首页（回归：mn-home 必须映射到 menu，不能把全部屏隐藏成空白「首页无内容」）
+elements['mn-home'].click();
+assert(
+  !elements['screen-menu'].classList.contains('hidden') &&
+    elements['screen-history'].classList.contains('hidden'),
+  '迷你导航跳首页：显示首页屏（回归：不得全屏空白）'
+);
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

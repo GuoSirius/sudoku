@@ -1593,12 +1593,21 @@ function onKey(e) {
   }
 }
 
+// 摸鱼迷你导航为 fixed 置顶，按其实测高度把内容区下移，避免覆盖（?mini=1 或迷你模式开关触发后调用）
+function syncMiniNavOffset() {
+  if (!document.body.classList.contains('mini')) return;
+  const nav = document.getElementById('mini-nav');
+  if (!nav) return;
+  document.documentElement.style.setProperty('--mini-nav-h', nav.offsetHeight + 'px');
+}
+
 // ---------------- 初始化 ----------------
 function init() {
   applyTheme(storage.getSettings().theme);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (storage.getSettings().theme === 'auto') applyTheme('auto');
   });
+  window.addEventListener('resize', syncMiniNavOffset);
 
   $('btn-home').onclick = () => {
     // 游戏中返回首页：先暂停（停止计时、保留进度），避免计时偷偷继续
@@ -1638,7 +1647,7 @@ function init() {
       return;
     }
     if (name === 'guide') { openGuide('game'); return; }
-    showScreen(name);
+    showScreen(name === 'home' ? 'menu' : name);
   }
   ['game', 'home', 'history', 'leaderboard', 'settings', 'guide'].forEach((p) => {
     const b = $('mn-' + p);
@@ -1814,6 +1823,7 @@ function init() {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
   if (q.get('mini') === '1') {
     document.body.classList.add('mini');
+    requestAnimationFrame(syncMiniNavOffset);
     applyTheme('dark');
     if ($('screen-game').classList.contains('hidden')) {
       startNewGame(storage.getSettings().difficulty || 'easy');
@@ -1839,6 +1849,7 @@ async function initTauriBridge() {
     await listen('mini-toggle', () => {
       const on = document.body.classList.toggle('mini');
       if (on) {
+        requestAnimationFrame(syncMiniNavOffset);
         applyTheme('dark');
         if (typeof $('screen-game') !== 'undefined' && $('screen-game').classList.contains('hidden')) {
           startNewGame(storage.getSettings().difficulty || 'easy');
