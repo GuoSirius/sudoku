@@ -1089,7 +1089,20 @@ function openGuide(from) {
 
 // ---------------- 凯利仓位计算 ----------------
 const KELLY_KEY = 'sudoku:kelly';
-const KELLY_DEFAULTS = { mode: 'percent', profit: 10, loss: 5, winRate: 55, total: 200000 };
+// v 为存储结构版本，升级默认值或新增字段时 +1，旧数据自动重置为新默认（计算器输入，丢弃无副作用）
+const KELLY_STORE_V = 2;
+const KELLY_DEFAULTS = {
+  v: KELLY_STORE_V,
+  mode: 'percent',
+  valueMode: 'percent',
+  profit: 10,
+  loss: 5,
+  winRate: 60,
+  total: 200000, // 内部一律按「元」存，界面以「万元」显示
+  cost: '',
+  leverageOn: false,
+  leverageMax: 2,
+};
 // 四档配色：保守绿 → 平衡主色 → 进取橙 → 满仓红，用颜色直觉传达风险递增
 const KELLY_TIER_COLORS = {
   conservative: 'var(--ok)',
@@ -1098,12 +1111,15 @@ const KELLY_TIER_COLORS = {
   full: 'var(--danger)',
 };
 let kellyMode = 'percent';
+let kellyValueMode = 'percent';
+let kellyLeverageOn = false;
 
 function loadKellyInputs() {
   try {
     const raw = localStorage.getItem(KELLY_KEY);
     const o = raw ? JSON.parse(raw) : null;
-    if (o && typeof o === 'object') return o;
+    // 版本不匹配说明结构/默认值变了，直接换新默认，避免旧字段与新控件错位
+    if (o && typeof o === 'object' && o.v === KELLY_STORE_V) return o;
   } catch (e) {}
   return { ...KELLY_DEFAULTS };
 }
@@ -1120,12 +1136,20 @@ function readKellyInputs() {
     const el = $(id);
     return el ? el.value : '';
   };
+  // 总资产界面以「万元」输入，内部与存储统一折算成「元」
+  const rawTotal = val('kelly-total');
+  const wan = Number(rawTotal);
   return {
+    v: KELLY_STORE_V,
     mode: kellyMode,
+    valueMode: kellyValueMode,
     profit: val('kelly-profit'),
     loss: val('kelly-loss'),
+    cost: val('kelly-cost'),
     winRate: val('kelly-winrate'),
-    total: val('kelly-total'),
+    total: rawTotal === '' || !Number.isFinite(wan) ? '' : String(wan * 10000),
+    leverageOn: kellyLeverageOn,
+    leverageMax: val('kelly-lev-max'),
   };
 }
 
@@ -1137,16 +1161,93 @@ function switchKellyMode(v) {
   const T = Number(o.total) || KELLY_DEFAULTS.total;
   const round2 = (n) => Math.round(n * 100) / 100;
   let { profit, loss } = o;
-  if (kellyMode === 'amount' && v !== 'amount') {
-    profit = round2((Number(profit) / T) * 100);
-    loss = round2((Number(loss) / T) * 100);
-  } else if (kellyMode !== 'amount' && v === 'amount') {
-    profit = round2((Number(profit) / 100) * T);
-    loss = round2((Number(loss) / 100) * T);
+  // 仅当两侧都是「百分比语义」才换算：金额 ↔ 百分比 / 通用形式(百分比幅度)。
+  // 通用形式的「目标价 / 每股盈亏」是价格量纲，切到金额无意义，保留原值让用户重填。
+  const pctLike = (m) => m === 'amount' || m === 'percent' || (m === 'general' && kellyValueMode === 'percent');
+  if (pctLike(kellyMode) && pctLike(v)) {
+    if (kellyMode === 'amount' && v !== 'amount') {
+      profit = round2((Number(profit) / T) * 100);
+      loss = round2((Number(loss) / T) * 100);
+    } else if (kellyMode !== 'amount' && v === 'amount') {
+      profit = round2((Number(profit) / 100) * T);
+      loss = round2((Number(loss) / 100) * T);
+    }
   }
   kellyMode = v;
-  saveKellyInputs({ mode: v, profit, loss, winRate: o.winRate, total: o.total });
+  saveKellyInputs({ ...o, v: KELLY_STORE_V, mode: v, profit, loss });
   renderKelly();
+}
+
+// 切换通用形式的「数值形式」：百分比 / 目标价 / 每股盈亏
+function switchKellyValueMode(v) {
+  if (v === kellyValueMode) return;
+  kellyValueMode = v;
+  saveKellyInputs({ ...readKellyInputs(), valueMode: v });
+  renderKelly();
+}
+
+// 切换是否允许杠杆（仓位 > 100%）
+function switchKellyLeverage(v) {
+  const on = v === 'on';
+  if (on === kellyLeverageOn) return;
+  kellyLeverageOn = on;
+  saveKellyInputs({ ...readKellyInputs(), leverageOn: on });
+  renderKelly();
+}
+
+// 渲染「数值形式」分段控件（仅通用形式可见），并同步成本价字段与说明
+function renderKellyValueMode() {
+  const wrap = $('kelly-value-mode');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [
+    ['percent', '百分比'],
+    ['price', '目标价'],
+    ['perShare', '每股盈亏'],
+  ].forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.className = 'seg-btn' + (v === kellyValueMode ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => switchKellyValueMode(v);
+    wrap.appendChild(b);
+  });
+  const hint = $('kelly-vm-hint');
+  if (hint) {
+    hint.textContent =
+      kellyValueMode === 'price'
+        ? '填成本价与止盈/止损价，程序按（目标价 − 成本价）÷ 成本价 自动折算盈亏幅度。'
+        : kellyValueMode === 'perShare'
+          ? '填成本价与每股盈亏金额，程序按 每股盈亏 ÷ 成本价 自动折算盈亏幅度。'
+          : '直接填盈亏幅度百分比，例如涨 30%、跌 20%。';
+  }
+  // 成本价只在「目标价 / 每股盈亏」时才有意义
+  const costField = $('kelly-cost-field');
+  if (costField) costField.classList.toggle('hidden', kellyValueMode === 'percent');
+}
+
+// 渲染「杠杆」分段控件（仅通用形式可见，其余模式 f<1 恒不成立）
+function renderKellyLeverage() {
+  const wrap = $('kelly-lev');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [
+    ['off', '不允许'],
+    ['on', '允许'],
+  ].forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.className = 'seg-btn' + ((v === 'on') === kellyLeverageOn ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => switchKellyLeverage(v);
+    wrap.appendChild(b);
+  });
+  const maxField = $('kelly-lev-max-field');
+  if (maxField) maxField.classList.toggle('hidden', !kellyLeverageOn);
+  const hint = $('kelly-lev-hint');
+  if (hint) {
+    hint.textContent = kellyLeverageOn
+      ? '允许杠杆：仓位上限为「杠杆上限」填的倍数，超出的档位会被截断并标注理论值。'
+      : '不允许杠杆：所有档位仓位上限 100%。通用形式算出的理论值可能超过 100%，届时按 100% 给出并标注理论值。';
+  }
 }
 
 // 渲染「输入方式」分段控件，并同步单位与说明文案
@@ -1165,13 +1266,29 @@ function renderKellyMode() {
     b.onclick = () => switchKellyMode(v);
     wrap.appendChild(b);
   });
-  // 单位与 label 前缀随模式切换：金额「元/盈利/亏损」，百分比「%/盈利/亏损」，
-  // 通用形式「%/盈利幅度/亏损幅度」（亏损不一定是 100% 的场景）
   const isGeneral = kellyMode === 'general';
   const isAmount = kellyMode === 'amount';
-  const unit = isAmount ? '元' : '%';
-  const profitPrefix = isGeneral ? '盈利幅度' : '盈利';
-  const lossPrefix = isGeneral ? '亏损幅度' : '亏损';
+  // 二级分组仅在通用形式下出现（金额/百分比模式的盈亏一定是同一个量纲）
+  const vmGroup = $('kelly-vm-group');
+  if (vmGroup) vmGroup.classList.toggle('hidden', !isGeneral);
+  const levGroup = $('kelly-lev-group');
+  if (levGroup) levGroup.classList.toggle('hidden', !isGeneral);
+  renderKellyValueMode();
+  renderKellyLeverage();
+
+  // 单位与 label 前缀随「输入方式 + 数值形式」变化：
+  // 金额「元/盈利/亏损」；百分比「%/盈利/亏损」；
+  // 通用形式：百分比「%/盈利幅度/亏损幅度」、目标价「元/止盈价/止损价」、每股盈亏「元/每股盈利/每股亏损」
+  const meta = isGeneral
+    ? kellyValueMode === 'price'
+      ? { unit: '元', profit: '止盈价', loss: '止损价' }
+      : kellyValueMode === 'perShare'
+        ? { unit: '元', profit: '每股盈利', loss: '每股亏损' }
+        : { unit: '%', profit: '盈利幅度', loss: '亏损幅度' }
+    : { unit: isAmount ? '元' : '%', profit: '盈利', loss: '亏损' };
+  const unit = meta.unit;
+  const profitPrefix = meta.profit;
+  const lossPrefix = meta.loss;
   const units = document.querySelectorAll('#screen-kelly .kelly-unit');
   Array.prototype.forEach.call(units, (el) => {
     el.textContent = unit;
@@ -1217,6 +1334,10 @@ function renderKellyResult(r, sum, tiers) {
       (r.edgePct >= 0 ? '+' : '') + fmtPct(r.edgePct)
     )
   );
+  // 只有真被截断时才占一格，避免常态下撑高汇总区
+  if (r.capped) {
+    sum.appendChild(kellyMetric('is-danger', '仓位上限', fmtPct(r.capPct)));
+  }
 
   tiers.innerHTML = '';
   if (r.negative) {
@@ -1232,6 +1353,15 @@ function renderKellyResult(r, sum, tiers) {
     const over = t.posPct > 100;
     const card = document.createElement('div');
     card.className = 'kelly-tier' + (over ? ' is-over' : '');
+    // 理论值超出上限 → 红色警示；仅超出 100% 但未超上限（已允许杠杆）→ 普通杠杆提示
+    if (t.capped || over) {
+      const warn = document.createElement('div');
+      warn.className = 'kelly-tier-warn';
+      warn.textContent = t.capped
+        ? `⚠ 理论值 ${fmtPct(t.rawPct)} 已按上限 ${fmtPct(r.capPct)} 截断`
+        : `⚠ 含杠杆 · 仓位 ${fmtPct(t.posPct)} 超过总资产，需通过融资加仓才能达到理论最优，请评估融资成本与强平风险`;
+      card.appendChild(warn);
+    }
     card.style.setProperty('--tier-color', KELLY_TIER_COLORS[t.key] || 'var(--primary)');
 
     const head = document.createElement('div');
@@ -1263,12 +1393,6 @@ function renderKellyResult(r, sum, tiers) {
     card.appendChild(head);
     card.appendChild(main);
     card.appendChild(sub);
-    if (over) {
-      const warn = document.createElement('div');
-      warn.className = 'kelly-tier-warn';
-      warn.textContent = `⚠ 含杠杆 · 仓位 ${fmtPct(t.posPct)} 超过总资产，需通过融资加仓才能达到理论最优，请评估融资成本与强平风险`;
-      card.appendChild(warn);
-    }
     tiers.appendChild(card);
   });
 }
@@ -1312,6 +1436,9 @@ function calcAndRenderKelly() {
 function renderKelly() {
   const o = loadKellyInputs();
   kellyMode = o.mode === 'percent' || o.mode === 'general' ? o.mode : 'amount';
+  // 进入页面 / 刷新恢复时，一并还原次级全局态（否则分段控件高亮会与存储错位）
+  kellyValueMode = o.valueMode === 'price' || o.valueMode === 'perShare' ? o.valueMode : 'percent';
+  kellyLeverageOn = !!o.leverageOn;
   renderKellyMode();
   const set = (id, v) => {
     const el = $(id);
@@ -1320,7 +1447,10 @@ function renderKelly() {
   set('kelly-profit', o.profit);
   set('kelly-loss', o.loss);
   set('kelly-winrate', o.winRate);
-  set('kelly-total', o.total);
+  // 总资产内部按「元」存，界面以「万元」显示
+  set('kelly-total', o.total === '' || o.total == null ? '' : Number(o.total) / 10000);
+  set('kelly-cost', o.cost);
+  set('kelly-lev-max', o.leverageMax);
   calcAndRenderKelly();
 }
 

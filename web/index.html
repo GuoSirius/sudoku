@@ -279,7 +279,16 @@
                 <div class="seg" id="kelly-mode"></div>
                 <p class="setting-hint" id="kelly-mode-hint"></p>
               </div>
+              <div class="setting-group hidden" id="kelly-vm-group">
+                <label class="setting-label">数值形式</label>
+                <div class="seg" id="kelly-value-mode"></div>
+                <p class="setting-hint" id="kelly-vm-hint"></p>
+              </div>
               <div class="setting-group">
+                <div class="kelly-field hidden" id="kelly-cost-field">
+                  <label class="setting-label" for="kelly-cost">成本价（元/股）</label>
+                  <input type="number" id="kelly-cost" min="0" step="any" inputmode="decimal" placeholder="0" />
+                </div>
                 <div class="kelly-field">
                   <label class="setting-label" for="kelly-profit"><span id="kelly-profit-prefix">盈利</span>（<span class="kelly-unit">元</span>）</label>
                   <input type="number" id="kelly-profit" min="0" step="any" inputmode="decimal" placeholder="0" />
@@ -290,13 +299,24 @@
                 </div>
                 <div class="kelly-field">
                   <label class="setting-label" for="kelly-winrate">预计胜率（%）</label>
-                  <input type="number" id="kelly-winrate" min="0" max="100" step="0.1" inputmode="decimal" value="55" />
+                  <input type="number" id="kelly-winrate" min="0" max="100" step="10" inputmode="decimal" value="60" />
                 </div>
                 <div class="kelly-field">
-                  <label class="setting-label" for="kelly-total">现有总资产（元）</label>
-                  <input type="number" id="kelly-total" min="0" step="any" inputmode="decimal" value="200000" />
+                  <label class="setting-label" for="kelly-total">现有总资产（万元）</label>
+                  <input type="number" id="kelly-total" min="0" step="10" inputmode="decimal" value="20" />
                 </div>
-                <button class="btn btn-primary btn-block" id="kelly-calc" style="margin-top:12px">计算仓位</button>
+              </div>
+              <div class="setting-group hidden" id="kelly-lev-group">
+                <label class="setting-label">杠杆（仓位 > 100%）</label>
+                <div class="seg" id="kelly-lev"></div>
+                <div class="kelly-field hidden" id="kelly-lev-max-field" style="margin-top:10px">
+                  <label class="setting-label" for="kelly-lev-max">杠杆上限（倍）</label>
+                  <input type="number" id="kelly-lev-max" min="1" step="0.5" inputmode="decimal" value="2" />
+                </div>
+                <p class="setting-hint" id="kelly-lev-hint"></p>
+              </div>
+              <div class="setting-group">
+                <button class="btn btn-primary btn-block" id="kelly-calc">计算仓位</button>
                 <p class="kelly-error hidden" id="kelly-error"></p>
               </div>
             </div>

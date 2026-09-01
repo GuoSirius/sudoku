@@ -121,7 +121,7 @@ function near(a, b, msg, eps = 1e-9) {
 // ---- 通用形式：股票场景，A=20%（止损 20%），B=30%（上涨 30%），W=55% ----
 // f* = W/A − (1−W)/B = 0.55/0.2 − 0.45/0.3 = 2.75 − 1.5 = 1.25（125% · 需加杠杆）
 {
-  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general' });
+  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general', leverageOn: true });
   assert(r.ok, '通用形式应计算成功');
   near(r.b, 1.5, '盈亏比 B/A 应为 1.5');
   near(r.f, 1.25, '通用形式 f* 应为 1.25（125%，需加杠杆）');
@@ -181,6 +181,57 @@ function near(a, b, msg, eps = 1e-9) {
   // 通用模式中 0 也会触发前面统一的 ≤0 校验
   assert(calcKelly({ profit: 0, loss: 20, winRate: 55, total: 200000, mode: 'general' }).ok === false, '通用·盈利为 0 应非法');
   assert(calcKelly({ profit: 30, loss: 0, winRate: 55, total: 200000, mode: 'general' }).ok === false, '通用·亏损为 0 应非法');
+}
+
+// ---- 通用形式·数值形式=目标价（止盈价/止损价 + 成本价） ----
+// 成本价 10，止盈价 13 → 盈利率 30%；止损价 8 → 亏损率 20%；W=55% → f*=1.25（与幅度%等价）
+{
+  const r = calcKelly({ profit: 13, loss: 8, winRate: 55, total: 200000, mode: 'general', valueMode: 'price', cost: 10 });
+  assert(r.ok, '通用·目标价模式应计算成功');
+  near(r.winPct, 30, '目标价模式盈利率应为 30%');
+  near(r.losePct, 20, '目标价模式亏损率应为 20%');
+  near(r.f, 1.25, '目标价模式 f* 应与幅度%模式等价（1.25）');
+}
+// ---- 通用形式·数值形式=每股盈亏（每股盈利/亏损 + 成本价） ----
+// 成本价 10，每股盈利 3 → 盈利率 30%；每股亏损 2 → 亏损率 20%；W=55% → f*=1.25
+{
+  const r = calcKelly({ profit: 3, loss: 2, winRate: 55, total: 200000, mode: 'general', valueMode: 'perShare', cost: 10 });
+  assert(r.ok, '通用·每股盈亏模式应计算成功');
+  near(r.winPct, 30, '每股盈亏模式盈利率应为 30%');
+  near(r.losePct, 20, '每股盈亏模式亏损率应为 20%');
+  near(r.f, 1.25, '每股盈亏模式 f* 应与幅度%模式等价（1.25）');
+}
+// ---- 通用形式·目标价/每股盈亏 的非法输入 ----
+{
+  assert(calcKelly({ profit: 13, loss: 8, winRate: 55, total: 200000, mode: 'general', valueMode: 'price', cost: '' }).ok === false, '目标价模式成本价为空应非法');
+  assert(calcKelly({ profit: 10, loss: 8, winRate: 55, total: 200000, mode: 'general', valueMode: 'price', cost: 10 }).ok === false, '目标价模式止盈价=成本价应非法');
+  assert(calcKelly({ profit: 13, loss: 10, winRate: 55, total: 200000, mode: 'general', valueMode: 'price', cost: 10 }).ok === false, '目标价模式止损价=成本价应非法');
+  assert(calcKelly({ profit: 3, loss: 12, winRate: 55, total: 200000, mode: 'general', valueMode: 'perShare', cost: 10 }).ok === false, '每股盈亏模式每股亏损>成本价应非法');
+  assert(calcKelly({ profit: 3, loss: 2, winRate: 55, total: 200000, mode: 'general', valueMode: 'perShare', cost: 0 }).ok === false, '每股盈亏模式成本价为 0 应非法');
+}
+// ---- 杠杆封顶：不允许杠杆（默认）封顶 100% ----
+{
+  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general', leverageOn: false });
+  near(r.capPct, 100, '不允许杠杆时仓位上限应为 100%');
+  assert(r.capped === true, '理论值 125% 超过 100% 应被截断（capped）');
+  near(r.tiers[3].posPct, 100, '满仓档应被截断到 100%');
+  near(r.tiers[3].rawPct, 125, '满仓档应记录理论值 125%');
+  assert(r.tiers[3].capped === true, '满仓档应标注 capped');
+}
+// ---- 杠杆封顶：允许杠杆且上限 2 倍 → 125% 不超上限 ----
+{
+  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general', leverageOn: true, leverageMax: 2 });
+  near(r.capPct, 200, '允许杠杆且上限 2 倍时仓位上限应为 200%');
+  assert(r.capped === false, '125% < 200% 不应被截断');
+  near(r.tiers[3].posPct, 125, '满仓档应为理论值 125%');
+  near(r.tiers[3].rawPct, 125, '满仓档理论值应为 125%');
+}
+// ---- 杠杆封顶：允许杠杆但上限 1 倍 → 仍封顶 100% ----
+{
+  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general', leverageOn: true, leverageMax: 1 });
+  near(r.capPct, 100, '上限 1 倍时仓位上限应为 100%');
+  assert(r.capped === true, '125% > 100% 应被截断');
+  near(r.tiers[3].posPct, 100, '满仓档应截断到 100%');
 }
 
 console.log(`\n凯利公式模块: ${pass} 通过, ${fail} 失败`);

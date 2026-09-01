@@ -11,6 +11,15 @@
 //   · percent 百分比：直接填相对仓位的盈亏百分比（隐含 b=P/L 经典伯努利凯利）。
 //   · general 通用形式：填每仓位独立盈亏幅度（亏损不一定是 100%）；f 可能 > 1（加杠杆）。
 //
+// general 模式下再选「数值形式」valueMode，把原始输入折算成盈亏幅度百分比：
+//   · percent  直接就是百分比（盈利率 B / 亏损率 A）
+//   · price    目标价：止盈价 Pt、止损价 Ps，按成本价 C 折算
+//                B = (Pt − C) / C × 100，A = (C − Ps) / C × 100
+//   · perShare 每股盈亏：每股盈利 e、每股亏损 l，按成本价 C 折算
+//                B = e / C × 100，A = l / C × 100
+//
+// 杠杆控制：leverageOn=false 时仓位封顶 100%（无杠杆）；=true 时封顶 leverageMax 倍。
+//
 // 纯函数、无 DOM 依赖，便于单测。
 
 export const KELLY_TIERS = [
@@ -20,13 +29,28 @@ export const KELLY_TIERS = [
   { key: 'full', label: '满仓（全凯利）', factor: 1, desc: '100% 凯利 · 理论最优，波动极大' },
 ];
 
-// 入参：profit/loss（金额或百分比，同单位）、winRate（百分数 0~100）、total（总资产）、mode
-// 返回 { ok:false, reason } 或 { ok:true, b, p, breakevenPct, f, fPct, edgePct, negative, leverage, winPct, losePct, tiers }
-export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
+// 入参：
+//   profit/loss（金额或百分比，同单位）、winRate（百分数 0~100）、total（总资产）、mode
+//   valueMode（percent/price/perShare，仅 general 生效）、cost（成本价，price/perShare 必填）
+//   leverageOn（是否允许杠杆）、leverageMax（杠杆上限倍数，如 2 = 仓位上限 200%）
+// 返回 { ok:false, reason } 或
+//   { ok:true, b, p, breakevenPct, f, fPct, edgePct, negative, leverage, winPct, losePct, capPct, capped, tiers }
+export function calcKelly({
+  profit,
+  loss,
+  winRate,
+  total,
+  mode = 'amount',
+  valueMode = 'percent',
+  cost,
+  leverageOn = false,
+  leverageMax = 2,
+}) {
   const P = Number(profit);
   const L = Number(loss);
   const T = Number(total);
   const pRaw = Number(winRate);
+  const C = Number(cost);
 
   if (![P, L, T, pRaw].every(Number.isFinite)) {
     return { ok: false, reason: '请填写有效的数字' };
@@ -43,13 +67,29 @@ export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
   let f, winPct, losePct, breakevenPct;
 
   if (mode === 'general') {
-    // 通用形式：A = 亏损幅度（小数）、B = 盈利幅度（小数）
-    const A = L / 100;
-    const B = P / 100;
+    // 先把原始输入统一折算成「盈亏幅度百分比」，再套 f* = W/A − (1−W)/B
+    if (valueMode === 'price') {
+      if (!Number.isFinite(C) || C <= 0) return { ok: false, reason: '请填写有效的成本价' };
+      if (P <= C) return { ok: false, reason: '止盈价必须高于成本价' };
+      if (L >= C) return { ok: false, reason: '止损价必须低于成本价' };
+      winPct = ((P - C) / C) * 100;
+      losePct = ((C - L) / C) * 100;
+    } else if (valueMode === 'perShare') {
+      if (!Number.isFinite(C) || C <= 0) return { ok: false, reason: '请填写有效的成本价' };
+      if (P <= 0) return { ok: false, reason: '每股盈利必须大于 0' };
+      if (L <= 0) return { ok: false, reason: '每股亏损必须大于 0' };
+      if (L > C) return { ok: false, reason: '每股亏损不能大于成本价' };
+      winPct = (P / C) * 100;
+      losePct = (L / C) * 100;
+    } else {
+      winPct = P;
+      losePct = L;
+    }
+
+    const A = losePct / 100; // 亏损幅度（小数）
+    const B = winPct / 100; // 盈利幅度（小数）
     if (A <= 0 || B <= 0) return { ok: false, reason: '盈亏幅度必须大于 0' };
     f = p / A - q / B; // f* = W/A − (1−W)/B
-    winPct = B * 100; // 用户填的百分比直接作为「盈利率」
-    losePct = A * 100;
     // 盈亏平衡胜率：A/(A+B) × 100，与 amount/percent 的 100/(1+b) 数学等价
     breakevenPct = (A / (A + B)) * 100;
   } else {
@@ -66,19 +106,43 @@ export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
   // 仅通用形式可能 f>1（需要加杠杆）；amount/percent 模式数学上 f<1
   const leverage = f > 1 + 1e-12;
 
+  // 仓位上限：不允许杠杆时封顶 100%，允许时封顶 leverageMax 倍（至少 1 倍兜底）
+  const maxLev = Number(leverageMax);
+  const capPct = leverageOn ? Math.max(1, Number.isFinite(maxLev) ? maxLev : 1) * 100 : 100;
+
+  let capped = false;
   const tiers = KELLY_TIERS.map((t) => {
-    const pos = negative ? 0 : f * t.factor;
+    const raw = negative ? 0 : f * t.factor; // 理论仓位（小数）
+    const pos = Math.min(raw, capPct / 100);
+    if (raw > capPct / 100 + 1e-12) capped = true;
     const amount = T * pos;
     return {
       ...t,
       posPct: pos * 100,
+      rawPct: raw * 100,
+      capped: raw > capPct / 100 + 1e-12,
       amount,
       winAmt: (amount * winPct) / 100,
       loseAmt: (amount * losePct) / 100,
     };
   });
 
-  return { ok: true, b, p, breakevenPct, f, fPct: f * 100, edgePct, negative, leverage, winPct, losePct, tiers };
+  return {
+    ok: true,
+    b,
+    p,
+    breakevenPct,
+    f,
+    fPct: f * 100,
+    edgePct,
+    negative,
+    leverage,
+    winPct,
+    losePct,
+    capPct,
+    capped,
+    tiers,
+  };
 }
 
 // 金额格式化：万元以上的大额用「万」为单位，便于快速读
