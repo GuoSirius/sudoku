@@ -549,6 +549,13 @@ assert(elements['kelly-summary'].children.length === 4, '凯利：汇总区渲�
     elements['kelly-loss-prefix'].textContent === '每股亏损',
     `凯利·默认：loss 前缀应为「每股亏损」（实际「${elements['kelly-loss-prefix'].textContent}」）`
   );
+  // 结果解读面板应随成功计算出现，并包含「怎么读 / 怎么操作」
+  assert(!elements['kelly-guide'].classList.contains('hidden'), '凯利·默认：计算成功后应显示结果解读面板');
+  assert(
+    elements['kelly-guide'].innerHTML.includes('怎么读这些数字') &&
+      elements['kelly-guide'].innerHTML.includes('怎么操作'),
+    '凯利·默认：解读面板应包含「怎么读」与「怎么操作」'
+  );
 }
 // 改胜率为 30%（低于盈亏平衡 33.33%）→ 期望为负，四档归零并出现警示条
 elements['kelly-winrate'].value = '30';

@@ -311,7 +311,7 @@
                 <div class="seg" id="kelly-lev"></div>
                 <div class="kelly-field hidden" id="kelly-lev-max-field" style="margin-top:10px">
                   <label class="setting-label" for="kelly-lev-max">杠杆上限（倍）</label>
-                  <input type="number" id="kelly-lev-max" min="1" step="0.5" inputmode="decimal" value="2" />
+                  <input type="number" id="kelly-lev-max" min="1" step="1" inputmode="decimal" value="2" />
                 </div>
                 <p class="setting-hint" id="kelly-lev-hint"></p>
               </div>
@@ -323,10 +323,12 @@
 
             <div class="kelly-summary hidden" id="kelly-summary"></div>
             <div class="kelly-tiers" id="kelly-tiers"></div>
+            <div class="kelly-guide hidden" id="kelly-guide"></div>
 
             <div class="kelly-note">
-              <p><strong>公式</strong>：f* = (b·p − q) / b　（b = 盈亏比 = 盈利÷亏损，p = 胜率，q = 1 − p）</p>
-              <p><strong>四档含义</strong>：保守 / 平衡 / 进取 / 满仓 = 全凯利的 1/4、1/2、3/4、1。全凯利在数学上使长期复利增长最快，但对胜率与盈亏比的估计误差极敏感、回撤巨大，实践中普遍使用其分数档。</p>
+              <p><strong>公式</strong>：百分比 / 金额模式用经典伯努利凯利 f* = (b·p − q)/b（b = 盈亏比 = 盈利÷亏损，p = 胜率，q = 1−p）；通用形式（股票）用 f* = 胜率/亏损幅度 − (1−胜率)/盈利幅度，亏损幅度不一定是 100%。</p>
+              <p><strong>四档含义</strong>：保守 / 平衡 / 进取 / 满仓 = 全凯利的 1/4、1/2、3/4、1。全凯利在数学上使长期复利增长最快，但对胜率与盈亏比的估计误差极敏感、回撤巨大，实践中普遍用分数档。</p>
+              <p><strong>怎么用</strong>：先选一档（把握小选保守 / 平衡），按卡片上的「仓位% / 金额」只拿对应金额建仓，剩余资金留作备用或等下一次机会；结果卡片下方有逐条解读。</p>
               <p class="kelly-warn">仓位建议仅供参考，不构成任何投资建议；实盘请结合自身风险承受能力与资金规划。</p>
             </div>
           </div>

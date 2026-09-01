@@ -1217,10 +1217,10 @@ function renderKellyValueMode() {
   if (hint) {
     hint.textContent =
       kellyValueMode === 'price'
-        ? '填成本价与止盈/止损价，程序按（目标价 − 成本价）÷ 成本价 自动折算盈亏幅度。'
+        ? '目标价：填成本价与止盈/止损价，程序按（目标价 − 成本价）÷ 成本价 自动折算盈亏幅度。例：成本 10 元、止盈 13、止损 8 → 盈利 30%、亏损 20%。'
         : kellyValueMode === 'perShare'
-          ? '填成本价与每股盈亏金额，程序按 每股盈亏 ÷ 成本价 自动折算盈亏幅度。'
-          : '直接填盈亏幅度百分比，例如涨 30%、跌 20%。';
+          ? '每股盈亏：填成本价与每股盈亏金额，程序按 每股盈亏 ÷ 成本价 自动折算盈亏幅度。例：成本 10 元、每股赚 4、每股亏 5 → 盈利 40%、亏损 50%。'
+          : '百分比：直接填盈亏幅度百分比，例如这笔交易预计涨 30%、跌 20%，就填盈利幅度 30、亏损幅度 20。';
   }
   // 成本价只在「目标价 / 每股盈亏」时才有意义
   const costField = $('kelly-cost-field');
@@ -1247,8 +1247,8 @@ function renderKellyLeverage() {
   const hint = $('kelly-lev-hint');
   if (hint) {
     hint.textContent = kellyLeverageOn
-      ? '允许杠杆：仓位上限为「杠杆上限」填的倍数，超出的档位会被截断并标注理论值。'
-      : '不允许杠杆：所有档位仓位上限 100%。通用形式算出的理论值可能超过 100%，届时按 100% 给出并标注理论值。';
+      ? '允许杠杆：仓位上限为「杠杆上限」填的倍数（如填 2 = 最多投入 2 倍总资产，需融资）。超出的档位会被截断并标注理论值。融资有利息与强平风险，实际仓位请低于上限、留安全垫。'
+      : '不允许杠杆：所有档位仓位上限 100%（最多把全部总资产投入）。通用形式算出的理论值若超过 100%，按 100% 给出并标注理论值。';
   }
 }
 
@@ -1302,10 +1302,10 @@ function renderKellyMode() {
   const hint = $('kelly-mode-hint');
   if (hint) {
     hint.textContent = isGeneral
-      ? '通用形式：填每仓位独立盈亏幅度。例：股票预计涨 30% 概率 55%、跌 20% 概率 45%，就填 30 / 20 / 55。亏损幅度小于 100% 时凯利可能给出 > 100% 仓位（需加杠杆）。'
+      ? '通用形式（股票/基金）：亏损幅度不一定是 100% 的场景，如止盈 +30%、止损 −10%。填每仓位独立的盈亏幅度，程序按 f* = 胜率/亏损幅度 − (1−胜率)/盈利幅度 计算。算出的理论仓位常 > 100%（需融资才够），可用下方「杠杆」开关控制上限。'
       : isAmount
-        ? '金额模式：填「把总资产全部投入时」的盈亏金额，程序按总资产折算成盈亏百分比。'
-        : '百分比模式：填相对「投入仓位」的盈亏百分比，例如赚 10%、亏 5%。';
+        ? '金额模式：你有一笔固定资金、且知道「全押时的盈亏金额」（如某策略全仓赚 2 万 / 亏 1 万）时适用。填「把总资产全部押上时」的盈亏金额（元），程序按总资产折算成盈亏百分比。'
+        : '百分比模式：盈亏是用「相对本次投入」的百分比表示的交易（如币圈、期货、固定止损比例的短线）时适用。填相对「本次投入资金」的盈亏百分比，例如涨赚 10%、跌亏 5%。';
   }
 }
 
@@ -1321,6 +1321,32 @@ function kellyMetric(cls, label, value) {
   d.appendChild(l);
   d.appendChild(v);
   return d;
+}
+
+// 结果解读：把指标与档位翻译成「怎么读、怎么理解、怎么做」，补齐纯数字看不懂的缺口
+function buildKellyGuide(r) {
+  const levLine = r.leverage
+    ? r.capped
+      ? `部分档位的理论仓位超过你设定的上限 <b>${fmtPct(r.capPct)}</b>，已按上限截断——要么调高「杠杆上限」（并承担融资利息与强平风险），要么直接按截断后的数值执行。`
+      : `部分档位仓位 <b>超过 100%</b>（需融资加仓才达理论最优），已按你的「杠杆上限」给出。请预留安全垫，别打满杠杆。`
+    : r.capped
+      ? `理论最优仓位超过 100%，但你设置了「不允许杠杆」，已按 <b>100%</b> 截断——说明当前参数下满仓也达不到理论最优，可考虑提高胜率或盈亏比。`
+      : '';
+  return [
+    '<h4>怎么读这些数字</h4>',
+    '<ul>',
+    '<li><b>盈亏比 b</b>：平均每亏 1 元能赚回多少。b 越大（赚得多、亏得少）越值得重仓。</li>',
+    '<li><b>盈亏平衡胜率</b>：至少要这么高的胜率，这笔交易长期才不亏本。你填的胜率高于它 → 正期望（绿色）；低于它 → 不该做（仓位已归零）。</li>',
+    '<li><b>全凯利 f*</b>：数学上让长期复利增长最快的仓位比例，是理论极限值。它对胜率/盈亏比的估计误差极敏感，实盘几乎不直接用全凯利。</li>',
+    '<li><b>单次期望收益率</b>：每 1 元仓位长期的平均收益。大于 0 说明这笔交易长期赚钱，数值越大越优。</li>',
+    '</ul>',
+    '<h4>怎么操作</h4>',
+    '<ul>',
+    '<li><b>选档</b>：保守 / 平衡 / 进取 / 满仓 = 全凯利的 1/4、1/2、3/4、1。新手或把握不大选保守 / 平衡；越有信心、回撤承受力越强，越可上进取 / 满仓。</li>',
+    '<li><b>下单</b>：选定一档后，按卡片上的「仓位 X% / 金额 Y」只拿 Y 元建仓，剩余资金留作备用仓、补仓或等下一次机会。例：平衡档 10% = 2 万，就只下单 2 万。</li>',
+    levLine ? `<li><b>杠杆提示</b>：${levLine}</li>` : '',
+    '</ul>',
+  ].join('');
 }
 
 function renderKellyResult(r, sum, tiers) {
@@ -1397,6 +1423,11 @@ function renderKellyResult(r, sum, tiers) {
     card.appendChild(sub);
     tiers.appendChild(card);
   });
+  const guide = $('kelly-guide');
+  if (guide) {
+    guide.classList.remove('hidden');
+    guide.innerHTML = buildKellyGuide(r);
+  }
 }
 
 // 读取输入 → 计算 → 渲染；输入未填全时静默清空结果（不打扰用户重填）
@@ -1411,6 +1442,8 @@ function calcAndRenderKelly() {
   if (blank) {
     sum.classList.add('hidden');
     tiers.innerHTML = '';
+    const guide = $('kelly-guide');
+    if (guide) guide.classList.add('hidden');
     if (err) {
       err.textContent = '';
       err.classList.add('hidden');
@@ -1421,6 +1454,8 @@ function calcAndRenderKelly() {
   if (!r.ok) {
     sum.classList.add('hidden');
     tiers.innerHTML = '';
+    const guide = $('kelly-guide');
+    if (guide) guide.classList.add('hidden');
     if (err) {
       err.textContent = r.reason;
       err.classList.remove('hidden');
