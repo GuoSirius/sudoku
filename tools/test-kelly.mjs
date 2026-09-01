@@ -118,5 +118,70 @@ function near(a, b, msg, eps = 1e-9) {
   assert(fmtPct(0) === '0%', 'fmtPct 零值');
 }
 
+// ---- 通用形式：股票场景，A=20%（止损 20%），B=30%（上涨 30%），W=55% ----
+// f* = W/A − (1−W)/B = 0.55/0.2 − 0.45/0.3 = 2.75 − 1.5 = 1.25（125% · 需加杠杆）
+{
+  const r = calcKelly({ profit: 30, loss: 20, winRate: 55, total: 200000, mode: 'general' });
+  assert(r.ok, '通用形式应计算成功');
+  near(r.b, 1.5, '盈亏比 B/A 应为 1.5');
+  near(r.f, 1.25, '通用形式 f* 应为 1.25（125%，需加杠杆）');
+  assert(r.leverage === true, 'f > 1 时应标记为含杠杆');
+  assert(r.negative === false, '正期望不应标记为负');
+  near(r.breakevenPct, (20 / 50) * 100, '盈亏平衡胜率应为 40%');
+  near(r.winPct, 30, '盈利率应为 30%');
+  near(r.losePct, 20, '亏损率应为 20%');
+  near(r.edgePct, 0.55 * 30 - 0.45 * 20, '期望收益率应为 7.5%');
+  // 四档：1/4=31.25% / 1/2=62.5% / 3/4=93.75% / 1=125%
+  near(r.tiers[0].posPct, 31.25, '通用·保守档仓位应为 31.25%');
+  near(r.tiers[3].posPct, 125, '通用·满仓档仓位应为 125%');
+  near(r.tiers[3].amount, 250000, '通用·满仓档金额应超出总资产（250000）');
+  // 每档盈亏金额 = 仓位金额 × 对应幅度
+  near(r.tiers[1].winAmt, 125000 * 0.3, '通用·平衡档预期盈利金额正确');
+  near(r.tiers[1].loseAmt, 125000 * 0.2, '通用·平衡档预期亏损金额正确');
+}
+
+// ---- 通用形式：f < 1 的常见股票参数（上涨 10% 胜率 55%，下跌 5% 胜率 45%） ----
+// f* = 0.55/0.05 − 0.45/0.10 = 11 − 4.5 = 6.5（650%，极高杠杆）
+// 这反映「盈亏不对称但比例都很小」时凯利建议加大量杠杆——这是数学事实
+{
+  const r = calcKelly({ profit: 10, loss: 5, winRate: 55, total: 200000, mode: 'general' });
+  near(r.f, 6.5, '通用·小幅度参数下 f 应极大（650%·需大幅加杠杆）');
+  assert(r.leverage === true, '通用·小幅度下应标记含杠杆');
+}
+
+// ---- 通用形式：f<1 场景（A=40% 大止损、B=20%、胜率 70% 高胜率） ----
+// f* = 0.7/0.4 − 0.3/0.2 = 1.75 − 1.5 = 0.25（25%）
+{
+  const r = calcKelly({ profit: 20, loss: 40, winRate: 70, total: 100000, mode: 'general' });
+  near(r.f, 0.25, '通用·稳健场景 f* 应为 0.25');
+  assert(r.leverage === false, 'f < 1 不应标记含杠杆');
+  near(r.tiers[3].amount, 25000, '通用·满仓金额 25% × 10 万 = 2.5 万');
+}
+
+// ---- 通用形式：与经典 amount/percent 的退化等价（A=100%、B=b） ----
+// 当 general 模式填 A=100%、B=2、W=55%，f = 0.55/1 − 0.45/2 = 0.325（与 percent 模式 10/5 一致）
+{
+  const r1 = calcKelly({ profit: 10, loss: 5, winRate: 55, total: 200000, mode: 'percent' });
+  const r2 = calcKelly({ profit: 200, loss: 100, winRate: 55, total: 200000, mode: 'general' });
+  near(r1.f, r2.f, 'A=100%、B=200% 的通用形式应与 percent 模式 10%/5% 数学等价');
+}
+
+// ---- 通用形式：负期望 ----
+{
+  const r = calcKelly({ profit: 10, loss: 20, winRate: 40, total: 200000, mode: 'general' });
+  // f = 0.4/0.2 − 0.6/0.1 = 2 − 6 = −4
+  near(r.f, -4, '通用·负期望 f 应为负');
+  assert(r.negative === true, '通用·负期望应标记');
+  assert(r.leverage === false, '通用·f<1 不应标记杠杆');
+  assert(r.tiers.every((t) => t.amount === 0), '通用·负期望四档归零');
+}
+
+// ---- 通用形式：非法输入 ----
+{
+  // 通用模式中 0 也会触发前面统一的 ≤0 校验
+  assert(calcKelly({ profit: 0, loss: 20, winRate: 55, total: 200000, mode: 'general' }).ok === false, '通用·盈利为 0 应非法');
+  assert(calcKelly({ profit: 30, loss: 0, winRate: 55, total: 200000, mode: 'general' }).ok === false, '通用·亏损为 0 应非法');
+}
+
 console.log(`\n凯利公式模块: ${pass} 通过, ${fail} 失败`);
 process.exit(fail ? 1 : 0);

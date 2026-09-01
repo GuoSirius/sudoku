@@ -583,6 +583,39 @@ if (amountBtn) {
   const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
   assert(pos[3] === '32.5%', `凯利：切模式后盈亏比不变、满仓比例仍为 32.5%（实际 ${pos[3]}）`);
 }
+// ---- 通用形式（股票）：新增第三选项，f 可 > 1，加杠杆警示 ----
+{
+  const generalBtn = findAll(elements['kelly-mode'], 'seg-btn').find((b) => b.textContent === '通用形式（股票）');
+  assert(!!generalBtn, '凯利：模式分段控件应含「通用形式（股票）」按钮');
+  if (generalBtn) {
+    generalBtn.click();
+    // 切换后前缀变「盈利幅度/亏损幅度」，单位变 %
+    assert(
+      elements['kelly-profit-prefix'].textContent === '盈利幅度',
+      `凯利·通用：profit 前缀应变「盈利幅度」（实际「${elements['kelly-profit-prefix'].textContent}」）`
+    );
+    assert(
+      elements['kelly-loss-prefix'].textContent === '亏损幅度',
+      `凯利·通用：loss 前缀应变「亏损幅度」（实际「${elements['kelly-loss-prefix'].textContent}」）`
+    );
+    // 经典股票场景：上涨 30% 胜率 55%，下跌 20% 胜率 45% → f* = 0.55/0.2 − 0.45/0.3 = 1.25
+    elements['kelly-profit'].value = '30';
+    elements['kelly-loss'].value = '20';
+    elements['kelly-winrate'].value = '55';
+    ['kelly-profit', 'kelly-loss', 'kelly-winrate'].forEach((id) => {
+      (elements[id]._listeners['input'] || []).forEach((f) => f({}));
+    });
+    const cards2 = findAll(elements['kelly-tiers'], 'kelly-tier');
+    const pos2 = cards2.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
+    assert(pos2.join('|') === '31.25%|62.5%|93.75%|125%', `凯利·通用：四档仓位应为 31.25/62.5/93.75/125%（实际 ${pos2.join('|')}）`);
+    // 满仓档 > 100%，加杠杆警示
+    assert(cards2[3].classList.contains('is-over'), '凯利·通用：满仓档应加 is-over 类');
+    const warns = findAll(cards2[3], 'kelly-tier-warn');
+    assert(warns.length === 1, `凯利·通用：满仓档应有 1 条杠杆警示（实际 ${warns.length}）`);
+    // 其他档 < 100%，不应加 is-over
+    assert(!cards2[0].classList.contains('is-over'), '凯利·通用：保守档 < 100% 不应加 is-over');
+  }
+}
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

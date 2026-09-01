@@ -1129,6 +1129,26 @@ function readKellyInputs() {
   };
 }
 
+// 切换输入方式：金额 ↔ 百分比/通用形式 时按总资产换算，让盈亏含义保持不变，
+// 避免「20000 元」直接变成「20000%」这种无意义数值
+function switchKellyMode(v) {
+  if (v === kellyMode) return;
+  const o = loadKellyInputs();
+  const T = Number(o.total) || KELLY_DEFAULTS.total;
+  const round2 = (n) => Math.round(n * 100) / 100;
+  let { profit, loss } = o;
+  if (kellyMode === 'amount' && v !== 'amount') {
+    profit = round2((Number(profit) / T) * 100);
+    loss = round2((Number(loss) / T) * 100);
+  } else if (kellyMode !== 'amount' && v === 'amount') {
+    profit = round2((Number(profit) / 100) * T);
+    loss = round2((Number(loss) / 100) * T);
+  }
+  kellyMode = v;
+  saveKellyInputs({ mode: v, profit, loss, winRate: o.winRate, total: o.total });
+  renderKelly();
+}
+
 // 渲染「输入方式」分段控件，并同步单位与说明文案
 function renderKellyMode() {
   const wrap = $('kelly-mode');
@@ -1137,27 +1157,36 @@ function renderKellyMode() {
   [
     ['amount', '金额'],
     ['percent', '百分比'],
+    ['general', '通用形式（股票）'],
   ].forEach(([v, label]) => {
     const b = document.createElement('button');
     b.className = 'seg-btn' + (v === kellyMode ? ' active' : '');
     b.textContent = label;
-    b.onclick = () => {
-      kellyMode = v;
-      saveKellyInputs({ ...readKellyInputs(), mode: v });
-      renderKelly();
-    };
+    b.onclick = () => switchKellyMode(v);
     wrap.appendChild(b);
   });
-  const isPct = kellyMode === 'percent';
+  // 单位与 label 前缀随模式切换：金额「元/盈利/亏损」，百分比「%/盈利/亏损」，
+  // 通用形式「%/盈利幅度/亏损幅度」（亏损不一定是 100% 的场景）
+  const isGeneral = kellyMode === 'general';
+  const isAmount = kellyMode === 'amount';
+  const unit = isAmount ? '元' : '%';
+  const profitPrefix = isGeneral ? '盈利幅度' : '盈利';
+  const lossPrefix = isGeneral ? '亏损幅度' : '亏损';
   const units = document.querySelectorAll('#screen-kelly .kelly-unit');
   Array.prototype.forEach.call(units, (el) => {
-    el.textContent = isPct ? '%' : '元';
+    el.textContent = unit;
   });
+  const profitLabelEl = $('kelly-profit-prefix');
+  const lossLabelEl = $('kelly-loss-prefix');
+  if (profitLabelEl) profitLabelEl.textContent = profitPrefix;
+  if (lossLabelEl) lossLabelEl.textContent = lossPrefix;
   const hint = $('kelly-mode-hint');
   if (hint) {
-    hint.textContent = isPct
-      ? '百分比模式：填相对「投入仓位」的盈亏百分比，例如赚 10%、亏 5%。'
-      : '金额模式：填「把总资产全部投入时」的盈亏金额，程序会按总资产折算成盈亏百分比。';
+    hint.textContent = isGeneral
+      ? '通用形式：填每仓位独立盈亏幅度。例：股票预计涨 30% 概率 55%、跌 20% 概率 45%，就填 30 / 20 / 55。亏损幅度小于 100% 时凯利可能给出 > 100% 仓位（需加杠杆）。'
+      : isAmount
+        ? '金额模式：填「把总资产全部投入时」的盈亏金额，程序按总资产折算成盈亏百分比。'
+        : '百分比模式：填相对「投入仓位」的盈亏百分比，例如赚 10%、亏 5%。';
   }
 }
 
@@ -1199,8 +1228,10 @@ function renderKellyResult(r, sum, tiers) {
     tiers.appendChild(a);
   }
   r.tiers.forEach((t) => {
+    // 通用形式且该档仓位 > 100% 时加杠杆警示（需借钱加仓才能达到理论最优）
+    const over = t.posPct > 100;
     const card = document.createElement('div');
-    card.className = 'kelly-tier';
+    card.className = 'kelly-tier' + (over ? ' is-over' : '');
     card.style.setProperty('--tier-color', KELLY_TIER_COLORS[t.key] || 'var(--primary)');
 
     const head = document.createElement('div');
@@ -1232,6 +1263,12 @@ function renderKellyResult(r, sum, tiers) {
     card.appendChild(head);
     card.appendChild(main);
     card.appendChild(sub);
+    if (over) {
+      const warn = document.createElement('div');
+      warn.className = 'kelly-tier-warn';
+      warn.textContent = `⚠ 含杠杆 · 仓位 ${fmtPct(t.posPct)} 超过总资产，需通过融资加仓才能达到理论最优，请评估融资成本与强平风险`;
+      card.appendChild(warn);
+    }
     tiers.appendChild(card);
   });
 }
@@ -1274,7 +1311,7 @@ function calcAndRenderKelly() {
 // 进入页面 / 刷新恢复 / 切换模式：回填输入并立即算一次
 function renderKelly() {
   const o = loadKellyInputs();
-  kellyMode = o.mode === 'percent' ? 'percent' : 'amount';
+  kellyMode = o.mode === 'percent' || o.mode === 'general' ? o.mode : 'amount';
   renderKellyMode();
   const set = (id, v) => {
     const el = $(id);

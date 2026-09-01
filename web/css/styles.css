@@ -1753,3 +1753,25 @@ body.mini .kelly-tier-pos {
 body.mini .kelly-tier {
   padding: 10px 12px;
 }
+/* 通用形式下仓位超过 100% 的档位：卡片淡红底、左边条变红，给出杠杆警示 */
+.kelly-tier.is-over {
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+.theme-light .kelly-tier.is-over {
+  background: #fff1f2;
+}
+.kelly-tier-warn {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--danger-weak);
+  color: var(--danger);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.theme-dark .kelly-tier-warn {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: color-mix(in srgb, var(--danger) 80%, var(--text));
+}

@@ -1,11 +1,16 @@
 // 凯利公式（Kelly Criterion）仓位计算
-//   f* = (b·p − q) / b = p − q/b
-//     b = 盈亏比（盈利 / 亏损），p = 胜率，q = 1 − p
-//   f* 为「理论最优下注比例」；实际操作中通常取其分数（1/4、1/2、3/4）以压低波动。
-// 两种输入模式：
-//   · amount  金额：盈利/亏损填绝对金额，语义为「若把总资产全部投入的盈亏」，
-//     据此换算成盈利率/亏损率，再走同一套公式。
-//   · percent 百分比：直接填相对仓位的盈亏百分比。
+//   经典伯努利凯利（每注 1 元，盈 b 元亏 1 元）：
+//     f* = (b·p − q) / b    （b = 盈亏比，p = 胜率，q = 1 − p）
+//   通用形式（每仓位独立盈亏幅度，亏损不一定是 100%，更贴近股票）：
+//     f* = W / A − (1 − W) / B
+//       W = 胜率，A = 亏损幅度（仓位比例），B = 盈利幅度（仓位比例）
+//   两种表达在 b = B/A 时数学等价（A=1, B=b 即退化为经典）。
+//
+// 三种输入模式：
+//   · amount  金额：填「总资产全押时的盈亏金额」，内部换算成盈利率/亏损率。
+//   · percent 百分比：直接填相对仓位的盈亏百分比（隐含 b=P/L 经典伯努利凯利）。
+//   · general 通用形式：填每仓位独立盈亏幅度（亏损不一定是 100%）；f 可能 > 1（加杠杆）。
+//
 // 纯函数、无 DOM 依赖，便于单测。
 
 export const KELLY_TIERS = [
@@ -16,7 +21,7 @@ export const KELLY_TIERS = [
 ];
 
 // 入参：profit/loss（金额或百分比，同单位）、winRate（百分数 0~100）、total（总资产）、mode
-// 返回 { ok:false, reason } 或 { ok:true, ...结果 }
+// 返回 { ok:false, reason } 或 { ok:true, b, p, breakevenPct, f, fPct, edgePct, negative, leverage, winPct, losePct, tiers }
 export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
   const P = Number(profit);
   const L = Number(loss);
@@ -33,17 +38,33 @@ export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
 
   const p = pRaw / 100;
   const q = 1 - p;
-  const b = P / L; // 盈亏比
+  const b = P / L; // 盈亏比（amount/percent 模式直接用，general 仅供展示）
 
-  // 相对仓位的盈利率 / 亏损率（%）
-  const winPct = mode === 'percent' ? P : (P / T) * 100;
-  const losePct = mode === 'percent' ? L : (L / T) * 100;
+  let f, winPct, losePct, breakevenPct;
 
-  const f = (b * p - q) / b; // 全凯利
-  const breakevenPct = 100 / (1 + b); // 盈亏平衡所需胜率
-  const edgePct = p * winPct - q * losePct; // 单次下注的期望收益率（相对仓位）
+  if (mode === 'general') {
+    // 通用形式：A = 亏损幅度（小数）、B = 盈利幅度（小数）
+    const A = L / 100;
+    const B = P / 100;
+    if (A <= 0 || B <= 0) return { ok: false, reason: '盈亏幅度必须大于 0' };
+    f = p / A - q / B; // f* = W/A − (1−W)/B
+    winPct = B * 100; // 用户填的百分比直接作为「盈利率」
+    losePct = A * 100;
+    // 盈亏平衡胜率：A/(A+B) × 100，与 amount/percent 的 100/(1+b) 数学等价
+    breakevenPct = (A / (A + B)) * 100;
+  } else {
+    // 经典伯努利凯利：f* = (bW − q)/b
+    f = (b * p - q) / b;
+    winPct = mode === 'percent' ? P : (P / T) * 100;
+    losePct = mode === 'percent' ? L : (L / T) * 100;
+    breakevenPct = 100 / (1 + b);
+  }
+
+  const edgePct = p * winPct - q * losePct; // 单次期望收益率（相对仓位，%）
   // 用极小容差判定：胜率恰落在盈亏平衡点时 f 因浮点误差可能是 ±1e-17，一律视为「不建议下注」
   const negative = f <= 1e-12;
+  // 仅通用形式可能 f>1（需要加杠杆）；amount/percent 模式数学上 f<1
+  const leverage = f > 1 + 1e-12;
 
   const tiers = KELLY_TIERS.map((t) => {
     const pos = negative ? 0 : f * t.factor;
@@ -57,7 +78,7 @@ export function calcKelly({ profit, loss, winRate, total, mode = 'amount' }) {
     };
   });
 
-  return { ok: true, b, p, breakevenPct, f, fPct: f * 100, edgePct, negative, winPct, losePct, tiers };
+  return { ok: true, b, p, breakevenPct, f, fPct: f * 100, edgePct, negative, leverage, winPct, losePct, tiers };
 }
 
 // 金额格式化：万元以上的大额用「万」为单位，便于快速读
