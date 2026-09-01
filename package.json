@@ -6,7 +6,7 @@
   "description": "可安装的网页数独：计时、个人排行榜、历史复盘、中途暂存续玩。纯静态 PWA。",
   "scripts": {
     "dev": "node tools/serve.mjs",
-    "test": "node tools/test-engine.mjs && node tools/test-game.mjs && node tools/test-dom.mjs && node tools/test-ui.mjs && node tools/test-restore.mjs && node tools/test-screen-restore.mjs && node tools/test-sound.mjs",
+    "test": "node tools/test-engine.mjs && node tools/test-game.mjs && node tools/test-dom.mjs && node tools/test-ui.mjs && node tools/test-restore.mjs && node tools/test-screen-restore.mjs && node tools/test-sound.mjs && node tools/test-kelly.mjs",
     "deploy": "node tools/deploy-schema.mjs && npx wrangler pages deploy web --project-name=sudoku",
     "deploy:schema": "node tools/deploy-schema.mjs",
     "gen:icons": "python tools/gen_icons.py",

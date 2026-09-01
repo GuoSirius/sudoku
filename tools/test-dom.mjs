@@ -11,6 +11,8 @@ class El {
     this._html = '';
     this.dataset = {};
     this._onclick = null;
+    // 凯利卡片用 style.setProperty 设置档位配色变量，桩需支持（无需真实样式生效）
+    this.style = { setProperty() {}, removeProperty() {}, getPropertyValue: () => '' };
   }
   get classList() {
     const s = this._classes;
@@ -99,6 +101,10 @@ globalThis.document = {
   },
   createElement(tag) {
     return new El(tag);
+  },
+  // 扁平桩无真实嵌套结构：按选择器查询一律返回空集合（调用方已做容错）
+  querySelectorAll() {
+    return [];
   },
   addEventListener(t, fn) {
     (docListeners[t] = docListeners[t] || []).push(fn);
@@ -513,6 +519,70 @@ assert(
     elements['screen-history'].classList.contains('hidden'),
   '迷你导航跳首页：显示首页屏（回归：不得全屏空白）'
 );
+
+// ---- 凯利仓位计算：进入页面 → 默认参数渲染 → 改胜率重算 → 清空静默 ----
+elements['btn-kelly'].click();
+assert(
+  !elements['screen-kelly'].classList.contains('hidden') &&
+    elements['screen-menu'].classList.contains('hidden'),
+  '凯利：点击首页入口进入凯利页且离开首页'
+);
+// 默认参数：百分比模式 盈利10 / 亏损5 / 胜率55% / 总资产20万 → b=2, f=32.5%
+assert(elements['kelly-summary'].children.length === 4, '凯利：汇总区渲染 4 项指标');
+{
+  const cards = findAll(elements['kelly-tiers'], 'kelly-tier');
+  assert(cards.length === 4, `凯利：应渲染 4 档仓位卡片（实际 ${cards.length}）`);
+  const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
+  assert(pos.join('|') === '8.13%|16.25%|24.38%|32.5%', `凯利：四档仓位比例应为 8.13/16.25/24.38/32.5%（实际 ${pos.join('|')}）`);
+  const amt = cards.map((c) => findAll(c, 'kelly-tier-amt')[0].textContent);
+  assert(amt[3] === '6.5 万', `凯利：满仓档金额应为 6.5 万（实际 ${amt[3]}）`);
+  assert(amt[0] === '1.63 万', `凯利：保守档金额应为 1.63 万（实际 ${amt[0]}）`);
+}
+// 改胜率为 30%（低于盈亏平衡 33.33%）→ 期望为负，四档归零并出现警示条
+elements['kelly-winrate'].value = '30';
+elements['kelly-winrate'].click(); // 扁平桩：直接触发 input 监听
+(elements['kelly-winrate']._listeners['input'] || []).forEach((f) => f({}));
+{
+  const cards = findAll(elements['kelly-tiers'], 'kelly-tier');
+  const alerts = findAll(elements['kelly-tiers'], 'kelly-alert');
+  assert(alerts.length === 1, '凯利：期望为负时应出现 1 条警示');
+  const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
+  assert(pos.every((p) => p === '0%'), `凯利：期望为负时四档仓位应归零（实际 ${pos.join('|')}）`);
+}
+// 清空亏损 → 静默清空结果、不报错（不打扰用户重填）
+elements['kelly-loss'].value = '';
+(elements['kelly-loss']._listeners['input'] || []).forEach((f) => f({}));
+assert(elements['kelly-summary'].classList.contains('hidden'), '凯利：输入未填全时隐藏汇总区');
+assert(findAll(elements['kelly-tiers'], 'kelly-tier').length === 0, '凯利：输入未填全时清空档位卡片');
+assert(elements['kelly-error'].classList.contains('hidden'), '凯利：输入未填全时不显示错误提示');
+// 亏损填 0 → 非法，应给出明确错误原因
+elements['kelly-loss'].value = '0';
+(elements['kelly-loss']._listeners['input'] || []).forEach((f) => f({}));
+assert(
+  !elements['kelly-error'].classList.contains('hidden') &&
+    elements['kelly-error'].textContent === '亏损必须大于 0',
+  `凯利：亏损为 0 应提示「亏损必须大于 0」（实际「${elements['kelly-error'].textContent}」）`
+);
+// 切到金额模式：单位文案与结果同步（盈亏比 b 不变 → 仓位比例不变，仅预期盈亏金额随之换算）
+elements['kelly-loss'].value = '5';
+(elements['kelly-loss']._listeners['input'] || []).forEach((f) => f({}));
+elements['kelly-winrate'].value = '55'; // 恢复正期望，便于校验比例
+(elements['kelly-winrate']._listeners['input'] || []).forEach((f) => f({}));
+const modeBtns = findAll(elements['kelly-mode'], 'seg-btn');
+const amountBtn = modeBtns.find((b) => b.textContent === '金额');
+assert(!!amountBtn, '凯利：模式分段控件应含「金额」按钮');
+if (amountBtn) {
+  amountBtn.click();
+  // 切换后分段控件会整体重建，需重新取按钮再断言激活态
+  const curAmount = findAll(elements['kelly-mode'], 'seg-btn').find((b) => b.textContent === '金额');
+  assert(
+    curAmount && curAmount.classList.contains('active'),
+    '凯利：点击「金额」后该按钮应激活'
+  );
+  const cards = findAll(elements['kelly-tiers'], 'kelly-tier');
+  const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
+  assert(pos[3] === '32.5%', `凯利：切模式后盈亏比不变、满仓比例仍为 32.5%（实际 ${pos[3]}）`);
+}
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

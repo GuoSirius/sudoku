@@ -1596,3 +1596,160 @@ body.boss #boss-screen {
 @media (prefers-reduced-motion: reduce) {
   .modal.win-pop { animation: none; }
 }
+
+/* ---------------- 凯利仓位计算 ---------------- */
+.kelly {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.kelly-field {
+  margin-bottom: 10px;
+}
+.kelly-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+}
+.kelly-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-weak);
+}
+.kelly-error {
+  margin: 10px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+/* 汇总：四项关键指标 */
+.kelly-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.kelly-metric {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.kelly-metric .km-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.kelly-metric .km-value {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text);
+}
+.kelly-metric.is-primary .km-value {
+  color: var(--primary);
+}
+.kelly-metric.is-ok .km-value {
+  color: var(--ok);
+}
+.kelly-metric.is-danger .km-value {
+  color: var(--danger);
+}
+/* 负期望警示条 */
+.kelly-alert {
+  border: 1px solid var(--danger);
+  background: var(--danger-weak);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.theme-dark .kelly-alert {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: color-mix(in srgb, var(--danger) 75%, var(--text));
+}
+/* 四档仓位卡片 */
+.kelly-tiers {
+  display: grid;
+  gap: 10px;
+}
+.kelly-tier {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--tier-color, var(--primary));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 12px 14px;
+}
+.kelly-tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.kelly-tier-name {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--tier-color, var(--primary));
+}
+.kelly-tier-desc {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+.kelly-tier-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kelly-tier-pos {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+.kelly-tier-amt {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tier-color, var(--primary));
+}
+.kelly-tier-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+/* 底部公式与免责说明 */
+.kelly-note {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.kelly-note p {
+  margin: 0 0 6px;
+}
+.kelly-note strong {
+  color: var(--text);
+}
+.kelly-note .kelly-warn {
+  color: var(--danger);
+}
+/* 摸鱼小窗：窄屏收紧，避免横向溢出 */
+body.mini .kelly-metric .km-value {
+  font-size: 16px;
+}
+body.mini .kelly-tier-pos {
+  font-size: 22px;
+}
+body.mini .kelly-tier {
+  padding: 10px 12px;
+}

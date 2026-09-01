@@ -8,9 +8,10 @@ import { registerPWA } from './pwa.js';
 import { initSync, submitGlobalScore, fetchGlobalLeaderboard } from './sync.js';
 import { VERSION, BUILD_DATE, COMMIT } from './version.js';
 import { playPlace, playErase, playWrong, playWin, playHint, playCheck, isSoundOn, setSoundOn, getVolume, setVolume, reloadFromSettings, warmUpAudio } from './sound.js';
+import { calcKelly, KELLY_TIERS, fmtMoney, fmtPct } from './kelly.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide'];
+const SCREENS = ['menu', 'game', 'history', 'replay', 'leaderboard', 'settings', 'guide', 'kelly'];
 
 let game = null; // 当前 Game 实例
 let noteMode = false;
@@ -203,8 +204,9 @@ function showScreen(name) {
   else if (name === 'history') renderHistory();
   else if (name === 'leaderboard') renderLeaderboard();
   else if (name === 'settings') renderSettings();
+  else if (name === 'kelly') renderKelly();
   // 所有页面统一持久化，刷新后都能停留在当前页（复盘是历史的子页，也记成 replay，靠 replayId 还原）
-  const PERSIST_SCREENS = ['menu', 'game', 'history', 'leaderboard', 'settings', 'guide', 'replay'];
+  const PERSIST_SCREENS = ['menu', 'game', 'history', 'leaderboard', 'settings', 'guide', 'replay', 'kelly'];
   if (PERSIST_SCREENS.includes(name)) {
     try {
       localStorage.setItem('sudoku:screen', name);
@@ -271,7 +273,7 @@ function restoreScreen() {
     showScreen('guide');
     return;
   }
-  if (saved === 'history' || saved === 'leaderboard' || saved === 'settings') {
+  if (saved === 'history' || saved === 'leaderboard' || saved === 'settings' || saved === 'kelly') {
     showScreen(saved);
     return;
   }
@@ -1085,6 +1087,206 @@ function openGuide(from) {
   showScreen('guide');
 }
 
+// ---------------- 凯利仓位计算 ----------------
+const KELLY_KEY = 'sudoku:kelly';
+const KELLY_DEFAULTS = { mode: 'percent', profit: 10, loss: 5, winRate: 55, total: 200000 };
+// 四档配色：保守绿 → 平衡主色 → 进取橙 → 满仓红，用颜色直觉传达风险递增
+const KELLY_TIER_COLORS = {
+  conservative: 'var(--ok)',
+  balanced: 'var(--primary)',
+  aggressive: '#f59e0b',
+  full: 'var(--danger)',
+};
+let kellyMode = 'percent';
+
+function loadKellyInputs() {
+  try {
+    const raw = localStorage.getItem(KELLY_KEY);
+    const o = raw ? JSON.parse(raw) : null;
+    if (o && typeof o === 'object') return o;
+  } catch (e) {}
+  return { ...KELLY_DEFAULTS };
+}
+function saveKellyInputs(o) {
+  try {
+    localStorage.setItem(KELLY_KEY, JSON.stringify(o));
+  } catch (e) {}
+}
+// 大额折算成「万」，小额保留「元」，避免长数字影响阅读
+const fmtAmount = (v) => (Math.abs(v) >= 10000 ? fmtMoney(v) : fmtMoney(v) + ' 元');
+
+function readKellyInputs() {
+  const val = (id) => {
+    const el = $(id);
+    return el ? el.value : '';
+  };
+  return {
+    mode: kellyMode,
+    profit: val('kelly-profit'),
+    loss: val('kelly-loss'),
+    winRate: val('kelly-winrate'),
+    total: val('kelly-total'),
+  };
+}
+
+// 渲染「输入方式」分段控件，并同步单位与说明文案
+function renderKellyMode() {
+  const wrap = $('kelly-mode');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [
+    ['amount', '金额'],
+    ['percent', '百分比'],
+  ].forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.className = 'seg-btn' + (v === kellyMode ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => {
+      kellyMode = v;
+      saveKellyInputs({ ...readKellyInputs(), mode: v });
+      renderKelly();
+    };
+    wrap.appendChild(b);
+  });
+  const isPct = kellyMode === 'percent';
+  const units = document.querySelectorAll('#screen-kelly .kelly-unit');
+  Array.prototype.forEach.call(units, (el) => {
+    el.textContent = isPct ? '%' : '元';
+  });
+  const hint = $('kelly-mode-hint');
+  if (hint) {
+    hint.textContent = isPct
+      ? '百分比模式：填相对「投入仓位」的盈亏百分比，例如赚 10%、亏 5%。'
+      : '金额模式：填「把总资产全部投入时」的盈亏金额，程序会按总资产折算成盈亏百分比。';
+  }
+}
+
+function kellyMetric(cls, label, value) {
+  const d = document.createElement('div');
+  d.className = 'kelly-metric' + (cls ? ' ' + cls : '');
+  const l = document.createElement('span');
+  l.className = 'km-label';
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'km-value';
+  v.textContent = value;
+  d.appendChild(l);
+  d.appendChild(v);
+  return d;
+}
+
+function renderKellyResult(r, sum, tiers) {
+  sum.innerHTML = '';
+  sum.classList.remove('hidden');
+  sum.appendChild(kellyMetric('', '盈亏比 b', r.b.toFixed(2) + ' : 1'));
+  sum.appendChild(kellyMetric('', '盈亏平衡胜率', fmtPct(r.breakevenPct)));
+  sum.appendChild(kellyMetric('is-primary', '全凯利 f*', fmtPct(r.fPct)));
+  sum.appendChild(
+    kellyMetric(
+      r.edgePct > 0 ? 'is-ok' : 'is-danger',
+      '单次期望收益率',
+      (r.edgePct >= 0 ? '+' : '') + fmtPct(r.edgePct)
+    )
+  );
+
+  tiers.innerHTML = '';
+  if (r.negative) {
+    const a = document.createElement('div');
+    a.className = 'kelly-alert';
+    a.textContent =
+      `期望为负：当前胜率 ${fmtPct(r.p * 100)} 低于盈亏平衡所需的 ${fmtPct(r.breakevenPct)}，` +
+      '数学上不应下注（四档仓位已归零）。';
+    tiers.appendChild(a);
+  }
+  r.tiers.forEach((t) => {
+    const card = document.createElement('div');
+    card.className = 'kelly-tier';
+    card.style.setProperty('--tier-color', KELLY_TIER_COLORS[t.key] || 'var(--primary)');
+
+    const head = document.createElement('div');
+    head.className = 'kelly-tier-head';
+    const name = document.createElement('span');
+    name.className = 'kelly-tier-name';
+    name.textContent = t.label;
+    const desc = document.createElement('span');
+    desc.className = 'kelly-tier-desc';
+    desc.textContent = t.desc;
+    head.appendChild(name);
+    head.appendChild(desc);
+
+    const main = document.createElement('div');
+    main.className = 'kelly-tier-main';
+    const pos = document.createElement('span');
+    pos.className = 'kelly-tier-pos';
+    pos.textContent = fmtPct(t.posPct);
+    const amt = document.createElement('span');
+    amt.className = 'kelly-tier-amt';
+    amt.textContent = fmtAmount(t.amount);
+    main.appendChild(pos);
+    main.appendChild(amt);
+
+    const sub = document.createElement('div');
+    sub.className = 'kelly-tier-sub';
+    sub.textContent = `预期盈利 ${fmtAmount(t.winAmt)} · 预期亏损 ${fmtAmount(t.loseAmt)}`;
+
+    card.appendChild(head);
+    card.appendChild(main);
+    card.appendChild(sub);
+    tiers.appendChild(card);
+  });
+}
+
+// 读取输入 → 计算 → 渲染；输入未填全时静默清空结果（不打扰用户重填）
+function calcAndRenderKelly() {
+  const sum = $('kelly-summary');
+  const tiers = $('kelly-tiers');
+  const err = $('kelly-error');
+  const inputs = readKellyInputs();
+  saveKellyInputs(inputs);
+  if (!sum || !tiers) return;
+  const blank = ['profit', 'loss', 'winRate', 'total'].some((k) => String(inputs[k]).trim() === '');
+  if (blank) {
+    sum.classList.add('hidden');
+    tiers.innerHTML = '';
+    if (err) {
+      err.textContent = '';
+      err.classList.add('hidden');
+    }
+    return;
+  }
+  const r = calcKelly(inputs);
+  if (!r.ok) {
+    sum.classList.add('hidden');
+    tiers.innerHTML = '';
+    if (err) {
+      err.textContent = r.reason;
+      err.classList.remove('hidden');
+    }
+    return;
+  }
+  if (err) {
+    err.textContent = '';
+    err.classList.add('hidden');
+  }
+  renderKellyResult(r, sum, tiers);
+}
+
+// 进入页面 / 刷新恢复 / 切换模式：回填输入并立即算一次
+function renderKelly() {
+  const o = loadKellyInputs();
+  kellyMode = o.mode === 'percent' ? 'percent' : 'amount';
+  renderKellyMode();
+  const set = (id, v) => {
+    const el = $(id);
+    if (el) el.value = v;
+  };
+  set('kelly-profit', o.profit);
+  set('kelly-loss', o.loss);
+  set('kelly-winrate', o.winRate);
+  set('kelly-total', o.total);
+  calcAndRenderKelly();
+}
+
 // ---------------- 复盘 ----------------
 function replayBoardAt(step) {
   const cells = replayRec.puzzle.slice();
@@ -1650,7 +1852,7 @@ function init() {
     if (name === 'guide') { openGuide('game'); return; }
     showScreen(name === 'home' ? 'menu' : name);
   }
-  ['game', 'home', 'history', 'leaderboard', 'settings', 'guide'].forEach((p) => {
+  ['game', 'home', 'history', 'leaderboard', 'settings', 'guide', 'kelly'].forEach((p) => {
     const b = $('mn-' + p);
     if (b) b.onclick = () => miniNavTo(p);
   });
@@ -1660,6 +1862,15 @@ function init() {
   $('btn-leaderboard').onclick = () => showScreen('leaderboard');
   $('btn-settings').onclick = () => showScreen('settings');
   $('btn-guide').onclick = () => openGuide('menu');
+  $('btn-kelly').onclick = () => showScreen('kelly');
+  $('btn-kelly-back').onclick = () => showScreen('menu');
+  // 凯利：任一输入变化即时重算，无需点按钮
+  ['kelly-profit', 'kelly-loss', 'kelly-winrate', 'kelly-total'].forEach((id) => {
+    const el = $(id);
+    if (el) el.addEventListener('input', calcAndRenderKelly);
+  });
+  const kellyCalc = $('kelly-calc');
+  if (kellyCalc) kellyCalc.onclick = calcAndRenderKelly;
 
   $('btn-pause').onclick = togglePause;
   $('btn-resume-game').onclick = resumeGamePlay;
