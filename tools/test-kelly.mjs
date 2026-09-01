@@ -111,6 +111,8 @@ function near(a, b, msg, eps = 1e-9) {
 {
   assert(fmtMoney(65000) === '6.5 万', 'fmtMoney 万元格式化：65000 → 6.5 万');
   assert(fmtMoney(200000) === '20 万', 'fmtMoney 万元格式化：200000 → 20 万');
+  assert(fmtMoney(10000) === '1 万', 'fmtMoney 边界：10000 → 1 万');
+  assert(fmtMoney(9999.9999999) === '1 万', 'fmtMoney 浮点边界：9999.9999… 应归为 1 万（不丢失单位）');
   assert(fmtMoney(18500) === '1.85 万', 'fmtMoney：18500 → 1.85 万');
   assert(fmtMoney(123.456) === '123.46', 'fmtMoney 小额保留两位');
   assert(fmtPct(8.125) === '8.13%', 'fmtPct 默认两位：8.125 → 8.13%');

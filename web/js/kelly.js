@@ -146,10 +146,12 @@ export function calcKelly({
 }
 
 // 金额格式化：万元以上的大额用「万」为单位，便于快速读
+// 阈值留 1e-6 余量：浮点噪声可能让本应恰为 10000 的净值变成 9999.9999…，
+// 既进不了「万」档、又在 toFixed(2) 四舍五入后显示成「10000」无单位，故放宽边界
 export function fmtMoney(v) {
   const n = Number(v) || 0;
   const abs = Math.abs(n);
-  if (abs >= 10000) return (n / 10000).toFixed(2).replace(/\.?0+$/, '') + ' 万';
+  if (abs >= 10000 - 1e-6) return (n / 10000).toFixed(2).replace(/\.?0+$/, '') + ' 万';
   return n.toFixed(2).replace(/\.?0+$/, '');
 }
 

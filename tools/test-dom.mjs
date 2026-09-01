@@ -527,16 +527,28 @@ assert(
     elements['screen-menu'].classList.contains('hidden'),
   '凯利：点击首页入口进入凯利页且离开首页'
 );
-// 默认参数：百分比模式 盈利10 / 亏损5 / 胜率60%（默认）/ 总资产20万 → b=2, f=0.4
+// 默认参数：通用形式 + 每股盈亏，成本10 / 每股盈利4 / 每股亏损5 / 胜率60% / 总资产20万
+//   盈利幅度 40% 亏损幅度 50% → f* = 0.6/0.5 − 0.4/0.4 = 0.2，四档 5/10/15/20%
 assert(elements['kelly-summary'].children.length === 4, '凯利：汇总区渲染 4 项指标');
 {
   const cards = findAll(elements['kelly-tiers'], 'kelly-tier');
   assert(cards.length === 4, `凯利：应渲染 4 档仓位卡片（实际 ${cards.length}）`);
   const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
-  assert(pos.join('|') === '10%|20%|30%|40%', `凯利：四档仓位比例应为 10/20/30/40%（实际 ${pos.join('|')}）`);
+  assert(pos.join('|') === '5%|10%|15%|20%', `凯利·默认每股盈亏：四档应为 5/10/15/20%（实际 ${pos.join('|')}）`);
   const amt = cards.map((c) => findAll(c, 'kelly-tier-amt')[0].textContent);
-  assert(amt[3] === '8 万', `凯利：满仓档金额应为 8 万（实际 ${amt[3]}）`);
-  assert(amt[0] === '2 万', `凯利：保守档金额应为 2 万（实际 ${amt[0]}）`);
+  assert(amt[3] === '4 万', `凯利·默认每股盈亏：满仓档金额应为 4 万（实际 ${amt[3]}）`);
+  assert(amt[0] === '1 万', `凯利·默认每股盈亏：保守档金额应为 1 万（实际 ${amt[0]}）`);
+  // 通用形式：数值形式分组与成本价字段可见，标签为「每股」口径
+  assert(!elements['kelly-vm-group'].classList.contains('hidden'), '凯利·默认：通用形式下数值形式分组应显示');
+  assert(!elements['kelly-cost-field'].classList.contains('hidden'), '凯利·默认·每股盈亏：成本价字段应显示');
+  assert(
+    elements['kelly-profit-prefix'].textContent === '每股盈利',
+    `凯利·默认：profit 前缀应为「每股盈利」（实际「${elements['kelly-profit-prefix'].textContent}」）`
+  );
+  assert(
+    elements['kelly-loss-prefix'].textContent === '每股亏损',
+    `凯利·默认：loss 前缀应为「每股亏损」（实际「${elements['kelly-loss-prefix'].textContent}」）`
+  );
 }
 // 改胜率为 30%（低于盈亏平衡 33.33%）→ 期望为负，四档归零并出现警示条
 elements['kelly-winrate'].value = '30';
@@ -563,16 +575,18 @@ assert(
     elements['kelly-error'].textContent === '亏损必须大于 0',
   `凯利：亏损为 0 应提示「亏损必须大于 0」（实际「${elements['kelly-error'].textContent}」）`
 );
-// 切到金额模式：单位文案与结果同步（盈亏比 b 不变 → 仓位比例不变，仅预期盈亏金额随之换算）
-elements['kelly-loss'].value = '5';
-(elements['kelly-loss']._listeners['input'] || []).forEach((f) => f({}));
-elements['kelly-winrate'].value = '55'; // 恢复正期望，便于校验比例
-(elements['kelly-winrate']._listeners['input'] || []).forEach((f) => f({}));
+// 切到金额模式：显式填 盈利10元/亏损5元/胜率55% → b=2, f=0.325 → 满仓 32.5%
 const modeBtns = findAll(elements['kelly-mode'], 'seg-btn');
 const amountBtn = modeBtns.find((b) => b.textContent === '金额');
 assert(!!amountBtn, '凯利：模式分段控件应含「金额」按钮');
 if (amountBtn) {
   amountBtn.click();
+  elements['kelly-profit'].value = '10';
+  elements['kelly-loss'].value = '5';
+  elements['kelly-winrate'].value = '55';
+  ['kelly-profit', 'kelly-loss', 'kelly-winrate'].forEach((id) => {
+    (elements[id]._listeners['input'] || []).forEach((f) => f({}));
+  });
   // 切换后分段控件会整体重建，需重新取按钮再断言激活态
   const curAmount = findAll(elements['kelly-mode'], 'seg-btn').find((b) => b.textContent === '金额');
   assert(
@@ -581,23 +595,26 @@ if (amountBtn) {
   );
   const cards = findAll(elements['kelly-tiers'], 'kelly-tier');
   const pos = cards.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
-  assert(pos[3] === '32.5%', `凯利：切模式后盈亏比不变、满仓比例仍为 32.5%（实际 ${pos[3]}）`);
+  assert(pos[3] === '32.5%', `凯利：金额模式满仓比例应为 32.5%（实际 ${pos[3]}）`);
 }
-// ---- 通用形式（股票）：新增第三选项，f 可 > 1，加杠杆警示 ----
+// ---- 通用形式·数值形式=百分比：前缀变 盈利幅度/亏损幅度，填 30/20/55 并开杠杆 → 125% ----
 {
+  // 先切回通用形式（上一步在金额模式），再切数值形式为百分比
   const generalBtn = findAll(elements['kelly-mode'], 'seg-btn').find((b) => b.textContent === '通用形式（股票）');
-  assert(!!generalBtn, '凯利：模式分段控件应含「通用形式（股票）」按钮');
-  if (generalBtn) {
-    generalBtn.click();
-    // 切换后前缀变「盈利幅度/亏损幅度」，单位变 %
+  if (generalBtn) generalBtn.click();
+  const pctBtn = findAll(elements['kelly-value-mode'], 'seg-btn').find((b) => b.textContent === '百分比');
+  assert(!!pctBtn, '凯利·通用：数值形式应含「百分比」按钮');
+  if (pctBtn) {
+    pctBtn.click();
     assert(
       elements['kelly-profit-prefix'].textContent === '盈利幅度',
-      `凯利·通用：profit 前缀应变「盈利幅度」（实际「${elements['kelly-profit-prefix'].textContent}」）`
+      `凯利·通用·百分比：profit 前缀应变「盈利幅度」（实际「${elements['kelly-profit-prefix'].textContent}」）`
     );
     assert(
       elements['kelly-loss-prefix'].textContent === '亏损幅度',
-      `凯利·通用：loss 前缀应变「亏损幅度」（实际「${elements['kelly-loss-prefix'].textContent}」）`
+      `凯利·通用·百分比：loss 前缀应变「亏损幅度」（实际「${elements['kelly-loss-prefix'].textContent}」）`
     );
+    assert(elements['kelly-cost-field'].classList.contains('hidden'), '凯利·通用·百分比：成本价字段应隐藏');
     // 经典股票场景：上涨 30% 胜率 55%，下跌 20% 胜率 45% → f* = 0.55/0.2 − 0.45/0.3 = 1.25
     elements['kelly-profit'].value = '30';
     elements['kelly-loss'].value = '20';
@@ -611,13 +628,13 @@ if (amountBtn) {
     if (levOnBtn2) levOnBtn2.click();
     const cards2 = findAll(elements['kelly-tiers'], 'kelly-tier');
     const pos2 = cards2.map((c) => findAll(c, 'kelly-tier-pos')[0].textContent);
-    assert(pos2.join('|') === '31.25%|62.5%|93.75%|125%', `凯利·通用：四档仓位应为 31.25/62.5/93.75/125%（实际 ${pos2.join('|')}）`);
+    assert(pos2.join('|') === '31.25%|62.5%|93.75%|125%', `凯利·通用·百分比：四档应为 31.25/62.5/93.75/125%（实际 ${pos2.join('|')}）`);
     // 满仓档 > 100%，加杠杆警示
-    assert(cards2[3].classList.contains('is-over'), '凯利·通用：满仓档应加 is-over 类');
+    assert(cards2[3].classList.contains('is-over'), '凯利·通用·百分比：满仓档应加 is-over 类');
     const warns = findAll(cards2[3], 'kelly-tier-warn');
-    assert(warns.length === 1, `凯利·通用：满仓档应有 1 条杠杆警示（实际 ${warns.length}）`);
+    assert(warns.length === 1, `凯利·通用·百分比：满仓档应有 1 条杠杆警示（实际 ${warns.length}）`);
     // 其他档 < 100%，不应加 is-over
-    assert(!cards2[0].classList.contains('is-over'), '凯利·通用：保守档 < 100% 不应加 is-over');
+    assert(!cards2[0].classList.contains('is-over'), '凯利·通用·百分比：保守档 < 100% 不应加 is-over');
   }
 }
 

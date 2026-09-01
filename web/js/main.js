@@ -1090,16 +1090,17 @@ function openGuide(from) {
 // ---------------- 凯利仓位计算 ----------------
 const KELLY_KEY = 'sudoku:kelly';
 // v 为存储结构版本，升级默认值或新增字段时 +1，旧数据自动重置为新默认（计算器输入，丢弃无副作用）
-const KELLY_STORE_V = 2;
+const KELLY_STORE_V = 3;
 const KELLY_DEFAULTS = {
   v: KELLY_STORE_V,
-  mode: 'percent',
-  valueMode: 'percent',
-  profit: 10,
+  mode: 'general', // 默认进入通用形式（股票），更贴近用户的主力场景
+  valueMode: 'perShare', // 通用形式下默认用「每股盈亏」口径
+  // 默认示例：成本 10、每股盈利 4、每股亏损 5、胜率 60% → 幅度 40%/50% → f*=0.2（干净无杠杆）
+  profit: 4,
   loss: 5,
   winRate: 60,
   total: 200000, // 内部一律按「元」存，界面以「万元」显示
-  cost: '',
+  cost: 10,
   leverageOn: false,
   leverageMax: 2,
 };
@@ -1129,7 +1130,8 @@ function saveKellyInputs(o) {
   } catch (e) {}
 }
 // 大额折算成「万」，小额保留「元」，避免长数字影响阅读
-const fmtAmount = (v) => (Math.abs(v) >= 10000 ? fmtMoney(v) : fmtMoney(v) + ' 元');
+// 阈值留 1e-6 余量：浮点噪声可能让本应恰为 10000 的净值变成 9999.9999…，误判为「元」档
+const fmtAmount = (v) => (Math.abs(v) >= 10000 - 1e-6 ? fmtMoney(v) : fmtMoney(v) + ' 元');
 
 function readKellyInputs() {
   const val = (id) => {
