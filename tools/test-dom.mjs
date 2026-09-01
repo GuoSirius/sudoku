@@ -685,5 +685,24 @@ if (amountBtn) {
   assert(String(elements['kelly-total'].value) === '50', `凯利·恢复：总资产应显示 50 万而非 50 万*10000（实际 ${elements['kelly-total'].value}）`);
 }
 
+// ---- 百分比语义默认：通用形式·百分比 应从默认占位 4/5 给出 10/5 ----
+{
+  delete store['sudoku:kelly']; // 清空，回到初始默认（通用形式+每股盈亏）
+  elements['btn-kelly'].click(); // 重新进入并渲染
+  assert(
+    String(elements['kelly-profit'].value) === '4' && String(elements['kelly-loss'].value) === '5',
+    `凯利·清空后默认应为每股盈亏 4/5（实际 ${elements['kelly-profit'].value}/${elements['kelly-loss'].value}）`
+  );
+  const pctBtn2 = findAll(elements['kelly-value-mode'], 'seg-btn').find((b) => b.textContent === '百分比');
+  assert(!!pctBtn2, '凯利·默认：数值形式应含「百分比」按钮');
+  if (pctBtn2) {
+    pctBtn2.click();
+    assert(
+      String(elements['kelly-profit'].value) === '10' && String(elements['kelly-loss'].value) === '5',
+      `凯利·通用·百分比：默认盈利/亏损应为 10/5（实际 ${elements['kelly-profit'].value}/${elements['kelly-loss'].value}）`
+    );
+  }
+}
+
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);

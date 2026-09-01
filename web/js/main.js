@@ -1155,24 +1155,42 @@ function readKellyInputs() {
   };
 }
 
+// 各「百分比语义」模式的默认盈亏（教科书经典值：赚 10% 亏 5%，盈亏比 b=2）。
+// 通用形式·每股盈亏另用一组（每股赚 4 / 亏 5，对应成本 10 时幅度 40%/50%）；目标价用价格量纲，不在此列。
+function kellyDefaultProfitLoss(mode, valueMode) {
+  const pctLike = mode === 'percent' || (mode === 'general' && valueMode === 'percent');
+  return pctLike ? { profit: 10, loss: 5 } : { profit: 4, loss: 5 };
+}
+
 // 切换输入方式：金额 ↔ 百分比/通用形式 时按总资产换算，让盈亏含义保持不变，
 // 避免「20000 元」直接变成「20000%」这种无意义数值
 function switchKellyMode(v) {
   if (v === kellyMode) return;
+  const oldMode = kellyMode;
+  const oldValueMode = kellyValueMode;
   const o = loadKellyInputs();
   const T = Number(o.total) || KELLY_DEFAULTS.total;
   const round2 = (n) => Math.round(n * 100) / 100;
   let { profit, loss } = o;
   // 仅当两侧都是「百分比语义」才换算：金额 ↔ 百分比 / 通用形式(百分比幅度)。
   // 通用形式的「目标价 / 每股盈亏」是价格量纲，切到金额无意义，保留原值让用户重填。
-  const pctLike = (m) => m === 'amount' || m === 'percent' || (m === 'general' && kellyValueMode === 'percent');
-  if (pctLike(kellyMode) && pctLike(v)) {
-    if (kellyMode === 'amount' && v !== 'amount') {
+  const pctLike = (m, vm) => m === 'amount' || m === 'percent' || (m === 'general' && vm === 'percent');
+  if (pctLike(oldMode, oldValueMode) && pctLike(v, kellyValueMode)) {
+    if (oldMode === 'amount' && v !== 'amount') {
       profit = round2((Number(profit) / T) * 100);
       loss = round2((Number(loss) / T) * 100);
-    } else if (kellyMode !== 'amount' && v === 'amount') {
+    } else if (oldMode !== 'amount' && v === 'amount') {
       profit = round2((Number(profit) / 100) * T);
       loss = round2((Number(loss) / 100) * T);
+    }
+  }
+  // 切到「百分比语义」模式时，若原数还是「旧模式的默认占位」，换成该模式的教科书默认（赚10%亏5%），避免沿用其他量纲的默认值
+  if (pctLike(v, kellyValueMode)) {
+    const src = kellyDefaultProfitLoss(oldMode, oldValueMode);
+    if (String(profit) === String(src.profit) && String(loss) === String(src.loss)) {
+      const tgt = kellyDefaultProfitLoss(v, kellyValueMode);
+      profit = tgt.profit;
+      loss = tgt.loss;
     }
   }
   kellyMode = v;
@@ -1183,8 +1201,20 @@ function switchKellyMode(v) {
 // 切换通用形式的「数值形式」：百分比 / 目标价 / 每股盈亏
 function switchKellyValueMode(v) {
   if (v === kellyValueMode) return;
+  const oldValueMode = kellyValueMode;
   kellyValueMode = v;
-  saveKellyInputs({ ...readKellyInputs(), valueMode: v });
+  const o = loadKellyInputs();
+  let profit = o.profit, loss = o.loss;
+  // 切到「百分比」数值形式时，若原数还是「旧数值形式的默认占位」，换成教科书默认（赚10%亏5%）
+  if (v === 'percent') {
+    const src = kellyDefaultProfitLoss(kellyMode, oldValueMode);
+    if (String(profit) === String(src.profit) && String(loss) === String(src.loss)) {
+      const tgt = kellyDefaultProfitLoss(kellyMode, 'percent');
+      profit = tgt.profit;
+      loss = tgt.loss;
+    }
+  }
+  saveKellyInputs({ ...readKellyInputs(), valueMode: v, profit, loss });
   renderKelly();
 }
 
