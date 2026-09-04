@@ -158,7 +158,7 @@ function dispatchKey(key, opts = {}) {
 const tick = () => new Promise((r) => setTimeout(r, 420));
 
 // 加载应用（init 会自执行）
-await import('../web/js/main.js');
+const app = await import('../web/js/main.js');
 assert(true, 'init 无异常');
 
 // 摸鱼小窗用 window.open 弹独立窗口；测试里打桩统计调用次数（默认 window 无 open）
@@ -720,6 +720,26 @@ if (amountBtn) {
   const subOf = (r) => (findAll(r, 'row-sub')[0] || { textContent: '' }).textContent;
   assert(subOf(rows[0]) >= subOf(rows[1]), '历史排序：未完成组内按时间倒序');
   assert(subOf(rows[2]) >= subOf(rows[3]), '历史排序：完成组内按时间倒序');
+}
+
+// ---- 摸鱼迷你：刷新已有进行中对局不新建、不归档为「未完成」 ----
+{
+  const beforeCount = hist().length;
+  // 前置：当前应存在一个进行中对局（前面笔记/暂停用例留下的 medium 局）
+  assert(!!cur() && cur().status !== 'won', '摸鱼回归前置：存在进行中对局');
+  // 模拟「刷新」：上次不在对局屏（screen-game 被隐藏），摸鱼自动开局逻辑介入
+  elements['screen-game'].classList.add('hidden');
+  app.autoStartMiniGame('easy');
+  // 关键断言：复用当前局续玩，不把当前局归档为「未完成」、也不新建 → 历史记录数不变
+  assert(hist().length === beforeCount, `摸鱼刷新复用当前局：历史记录数不变（${beforeCount}→${hist().length}）`);
+  assert(!elements['screen-game'].classList.contains('hidden'), '摸鱼刷新续玩：应显示对局屏');
+  assert(!!cur() && cur().status !== 'won', '摸鱼刷新续玩：当前对局仍存在且未被清空');
+  // 反向分支：无进行中对局时，应开新局（且仅此情形才会新建；旧逻辑每次刷新都走这里=堆积未完成）
+  localStorage.removeItem('sudoku:current');
+  elements['screen-game'].classList.add('hidden');
+  app.autoStartMiniGame('easy');
+  assert(!!cur() && cur().status !== 'won', '摸鱼无当前局：应新建一局');
+  assert(hist().length === beforeCount, `摸鱼无当前局新建：历史仍不变（${beforeCount}→${hist().length}）`);
 }
 
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);

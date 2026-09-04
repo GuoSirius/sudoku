@@ -590,6 +590,18 @@ function resumeGame() {
   $('btn-pause').title = '暂停';
   enterGame();
 }
+// 摸鱼迷你模式自动开局：仅当对局屏未显示时介入。
+// 已有进行中对局则直接续玩（不归档、不新建），避免每次刷新都把当前局变成「未完成」历史并新建一局，
+// 造成历史里堆积大量未完成记录。无进行中对局时才开新局。
+export function autoStartMiniGame(diff) {
+  if (!$('screen-game').classList.contains('hidden')) return;
+  const cur = storage.getCurrent();
+  if (cur && cur.status !== 'won') {
+    resumeGame();
+  } else {
+    startNewGame(diff);
+  }
+}
 function archiveCurrent() {
   const cur = storage.getCurrent();
   if (!cur || cur.status === 'won') return;
@@ -2275,9 +2287,7 @@ function init() {
     document.body.classList.add('mini');
     requestAnimationFrame(syncMiniNavOffset);
     applyTheme('dark');
-    if ($('screen-game').classList.contains('hidden')) {
-      startNewGame(storage.getSettings().difficulty || 'easy');
-    }
+    autoStartMiniGame(storage.getSettings().difficulty || 'easy');
     toast('摸鱼模式：按 ` 键一键隐藏 / 恢复');
   }
   // Tauri 桌面壳桥接：托盘菜单 / 全局快捷键（Alt+` 老板键、Alt+S 显隐）由 Rust 后端派发事件
@@ -2301,9 +2311,7 @@ async function initTauriBridge() {
       if (on) {
         requestAnimationFrame(syncMiniNavOffset);
         applyTheme('dark');
-        if (typeof $('screen-game') !== 'undefined' && $('screen-game').classList.contains('hidden')) {
-          startNewGame(storage.getSettings().difficulty || 'easy');
-        }
+        autoStartMiniGame(storage.getSettings().difficulty || 'easy');
         toast('已切换摸鱼迷你模式');
       }
     });
