@@ -926,7 +926,11 @@ function resumeFromHistory(rec) {
 function renderHistory() {
   const list = $('history-list');
   list.innerHTML = '';
-  const h = storage.getHistory();
+  // 排序：未完成优先，同组按时间倒序（新→旧）
+  const h = storage.getHistory().slice().sort((a, b) => {
+    if (!!a.won !== !!b.won) return a.won ? 1 : -1; // 未完成(won=false)排前
+    return (b.date || 0) - (a.date || 0); // 时间倒序
+  });
   if (!h.length) {
     list.innerHTML = '<div class="empty">暂无历史记录，去玩一局吧</div>';
     return;

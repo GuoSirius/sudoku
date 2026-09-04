@@ -704,5 +704,23 @@ if (amountBtn) {
   }
 }
 
+// ---- 历史排序：未完成优先，同组按时间倒序 ----
+{
+  const base = Date.now();
+  store['sudoku:history'] = JSON.stringify([
+    { id: 'w-old', difficulty: 'easy', durationMs: 1000, mistakes: 0, hintsUsed: 0, won: true, date: base, puzzle: [], solution: [], moves: [] },
+    { id: 'u-new', difficulty: 'easy', durationMs: 1000, mistakes: 0, hintsUsed: 0, won: false, date: base + 300000, puzzle: [], solution: [], moves: [] },
+    { id: 'u-old', difficulty: 'easy', durationMs: 1000, mistakes: 0, hintsUsed: 0, won: false, date: base + 60000, puzzle: [], solution: [], moves: [] },
+    { id: 'w-new', difficulty: 'easy', durationMs: 1000, mistakes: 0, hintsUsed: 0, won: true, date: base + 360000, puzzle: [], solution: [], moves: [] },
+  ]);
+  elements['btn-history'].click();
+  const rows = elements['history-list'].children;
+  assert(rows.length === 4, `历史排序：应渲染 4 条（实际 ${rows.length}）`);
+  assert(findByText(rows[0], '未完成') && findByText(rows[3], '完成'), '历史排序：未完成应在最前、完成在最后');
+  const subOf = (r) => (findAll(r, 'row-sub')[0] || { textContent: '' }).textContent;
+  assert(subOf(rows[0]) >= subOf(rows[1]), '历史排序：未完成组内按时间倒序');
+  assert(subOf(rows[2]) >= subOf(rows[3]), '历史排序：完成组内按时间倒序');
+}
+
 console.log(`\nDOM 冒烟结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail > 0 ? 1 : 0);
